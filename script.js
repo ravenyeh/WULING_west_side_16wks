@@ -1,6 +1,118 @@
 // 西進武嶺 SUB4 16週訓練計劃
 // Training Plan Data - 112 Days (16 Weeks)
 
+// User settings
+let raceDate = null;
+let userFTP = null;
+
+// Power Zones based on FTP (Coggan zones)
+const powerZones = {
+    1: { name: 'Active Recovery', min: 0, max: 55, color: '#90caf9' },
+    2: { name: 'Endurance', min: 55, max: 75, color: '#a5d6a7' },
+    3: { name: 'Tempo', min: 75, max: 90, color: '#fff59d' },
+    4: { name: 'Threshold', min: 90, max: 105, color: '#ffab91' },
+    5: { name: 'VO2max', min: 105, max: 120, color: '#ef9a9a' },
+    6: { name: 'Anaerobic', min: 120, max: 150, color: '#ce93d8' }
+};
+
+// Calculate power value from FTP percentage
+function calculatePower(ftpPercentage) {
+    if (!userFTP) return null;
+    return Math.round(userFTP * ftpPercentage / 100);
+}
+
+// Get power zone from FTP percentage
+function getPowerZone(ftpPercentage) {
+    for (let zone = 6; zone >= 1; zone--) {
+        if (ftpPercentage >= powerZones[zone].min) {
+            return zone;
+        }
+    }
+    return 1;
+}
+
+// Format power range string
+function formatPowerRange(minPercent, maxPercent) {
+    if (!userFTP) {
+        return `${minPercent}-${maxPercent}% FTP`;
+    }
+    const minPower = calculatePower(minPercent);
+    const maxPower = calculatePower(maxPercent);
+    return `${minPower}-${maxPower}W (${minPercent}-${maxPercent}%)`;
+}
+
+// Generate dynamic training content based on FTP
+function generateDynamicContent(baseContent, intensity) {
+    if (!userFTP) return baseContent;
+
+    // Define power targets for different intensities
+    const intensityTargets = {
+        '輕鬆': { min: 55, max: 70, zone: 2 },
+        '中等': { min: 70, max: 85, zone: 3 },
+        '高強度': { min: 90, max: 105, zone: 4 },
+        '最大': { min: 105, max: 120, zone: 5 }
+    };
+
+    const target = intensityTargets[intensity];
+    if (!target) return baseContent;
+
+    // Replace FTP percentage patterns with actual power values
+    let content = baseContent;
+
+    // Pattern: @ XX% FTP or @ XX-YY% FTP
+    content = content.replace(/@ ?(\d+)-?(\d+)?% ?FTP/g, (match, p1, p2) => {
+        const percent1 = parseInt(p1);
+        const power1 = calculatePower(percent1);
+        if (p2) {
+            const percent2 = parseInt(p2);
+            const power2 = calculatePower(percent2);
+            return `@ ${power1}-${power2}W (${percent1}-${percent2}% FTP)`;
+        }
+        return `@ ${power1}W (${percent1}% FTP)`;
+    });
+
+    // Pattern: FTP XX% or XX% FTP
+    content = content.replace(/FTP ?(\d+)%|(\d+)% ?FTP/g, (match, p1, p2) => {
+        const percent = parseInt(p1 || p2);
+        const power = calculatePower(percent);
+        return `${power}W (${percent}% FTP)`;
+    });
+
+    return content;
+}
+
+// Training content templates with FTP-based power targets
+const trainingTemplates = {
+    // Zone 2 rides
+    zone2: (duration, description) => ({
+        base: description,
+        powerMin: 55,
+        powerMax: 75,
+        zone: 2
+    }),
+    // Sweet Spot
+    sweetSpot: (sets, duration) => ({
+        base: `Sweet Spot 訓練：${sets}x${duration}min @ 88-94% FTP`,
+        powerMin: 88,
+        powerMax: 94,
+        zone: 3
+    }),
+    // Threshold
+    threshold: (sets, duration) => ({
+        base: `閾值訓練：${sets}x${duration}min @ FTP`,
+        powerMin: 95,
+        powerMax: 105,
+        zone: 4
+    }),
+    // VO2max
+    vo2max: (sets, duration) => ({
+        base: `VO2max 間歇：${sets}x${duration}min @ 110% FTP`,
+        powerMin: 105,
+        powerMax: 120,
+        zone: 5
+    })
+};
+
 // 訓練資料
 const trainingData = [
     // Week 1 - 基礎期
@@ -148,23 +260,20 @@ const trainingData = [
     { week: 16, day: 7, phase: '賽前週', intensity: '最大', content: '比賽日！西進武嶺 SUB4 挑戰', distance: 54, elevation: 2000, hours: 4.0 }
 ];
 
-// Race date management
-let raceDate = null;
-
 // Initialize the page
 document.addEventListener('DOMContentLoaded', () => {
-    // Load saved race date
-    const savedRaceDate = localStorage.getItem('wulingRaceDate');
-    if (savedRaceDate) {
-        raceDate = new Date(savedRaceDate);
-        document.getElementById('raceDateInput').value = savedRaceDate;
-        updateRaceDateDisplay();
-    }
+    // Load saved settings
+    loadSavedSettings();
 
-    // Set up race date button
-    document.getElementById('setRaceDateBtn').addEventListener('click', setRaceDate);
+    // Set up save settings button
+    document.getElementById('saveSettingsBtn').addEventListener('click', saveSettings);
+
+    // Allow Enter key to save settings
     document.getElementById('raceDateInput').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') setRaceDate();
+        if (e.key === 'Enter') saveSettings();
+    });
+    document.getElementById('ftpInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') saveSettings();
     });
 
     // Initialize components
@@ -173,6 +282,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupFilters();
     createWeeklyChart();
     updateCountdown();
+    updatePacingDisplay();
     setInterval(updateCountdown, 1000);
 
     // Modal close handlers
@@ -183,7 +293,116 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// Set race date
+// Load saved settings from localStorage
+function loadSavedSettings() {
+    // Load race date
+    const savedRaceDate = localStorage.getItem('wulingRaceDate');
+    if (savedRaceDate) {
+        raceDate = new Date(savedRaceDate);
+        document.getElementById('raceDateInput').value = savedRaceDate;
+        updateRaceDateDisplay();
+    }
+
+    // Load FTP
+    const savedFTP = localStorage.getItem('wulingUserFTP');
+    if (savedFTP) {
+        userFTP = parseInt(savedFTP);
+        document.getElementById('ftpInput').value = userFTP;
+        updateFTPDisplay();
+    }
+}
+
+// Save settings
+function saveSettings() {
+    // Save race date
+    const dateInput = document.getElementById('raceDateInput');
+    const selectedDate = dateInput.value;
+
+    if (selectedDate) {
+        raceDate = new Date(selectedDate);
+        localStorage.setItem('wulingRaceDate', selectedDate);
+        updateRaceDateDisplay();
+    }
+
+    // Save FTP
+    const ftpInput = document.getElementById('ftpInput');
+    const ftpValue = parseInt(ftpInput.value);
+
+    if (ftpValue && ftpValue >= 100 && ftpValue <= 500) {
+        userFTP = ftpValue;
+        localStorage.setItem('wulingUserFTP', ftpValue.toString());
+        updateFTPDisplay();
+    }
+
+    // Refresh all displays with new settings
+    populateSchedule();
+    displayTodayTraining();
+    updatePacingDisplay();
+    updateCountdown();
+
+    // Show confirmation
+    const btn = document.getElementById('saveSettingsBtn');
+    const originalText = btn.textContent;
+    btn.textContent = '已儲存！';
+    btn.style.background = '#00b894';
+    setTimeout(() => {
+        btn.textContent = originalText;
+        btn.style.background = '';
+    }, 2000);
+}
+
+// Update FTP display
+function updateFTPDisplay() {
+    const ftpDisplay = document.getElementById('ftpDisplay');
+    const ftpValue = document.getElementById('displayFTP');
+    const ftpUnit = ftpDisplay.querySelector('.ftp-unit');
+
+    if (userFTP) {
+        ftpValue.textContent = userFTP;
+        ftpUnit.style.display = 'inline';
+        ftpDisplay.classList.remove('not-set');
+    } else {
+        ftpValue.textContent = '未設定';
+        ftpUnit.style.display = 'none';
+        ftpDisplay.classList.add('not-set');
+    }
+}
+
+// Update pacing display with actual power values
+function updatePacingDisplay() {
+    if (!userFTP) return;
+
+    // Update all metric values that show FTP percentages
+    const metrics = document.querySelectorAll('.metric-value');
+    metrics.forEach(metric => {
+        const text = metric.textContent;
+        // Match pattern like "FTP 65-70%"
+        const match = text.match(/FTP (\d+)-(\d+)%/);
+        if (match) {
+            const minPercent = parseInt(match[1]);
+            const maxPercent = parseInt(match[2]);
+            const minPower = calculatePower(minPercent);
+            const maxPower = calculatePower(maxPercent);
+            metric.innerHTML = `${minPower}-${maxPower}W<br><small style="opacity:0.7">(${minPercent}-${maxPercent}% FTP)</small>`;
+        }
+    });
+}
+
+// Get power zones summary for display
+function getPowerZonesSummary() {
+    if (!userFTP) return null;
+
+    return {
+        z1: { name: 'Zone 1 恢復', range: `< ${calculatePower(55)}W` },
+        z2: { name: 'Zone 2 耐力', range: `${calculatePower(55)}-${calculatePower(75)}W` },
+        z3: { name: 'Zone 3 節奏', range: `${calculatePower(75)}-${calculatePower(90)}W` },
+        z4: { name: 'Zone 4 閾值', range: `${calculatePower(90)}-${calculatePower(105)}W` },
+        z5: { name: 'Zone 5 VO2max', range: `${calculatePower(105)}-${calculatePower(120)}W` },
+        z6: { name: 'Zone 6 無氧', range: `> ${calculatePower(120)}W` }
+    };
+}
+
+// Set race date (legacy function for compatibility)
 function setRaceDate() {
     const dateInput = document.getElementById('raceDateInput');
     const selectedDate = dateInput.value;
@@ -283,12 +502,24 @@ function populateSchedule(filter = 'all') {
             tr.classList.add('race-day');
         }
 
+        // Generate dynamic content with FTP-based power values
+        const dynamicContent = generateDynamicContent(day.content, day.intensity);
+
+        // Get power target display if FTP is set
+        let powerTargetHtml = '';
+        if (userFTP && day.intensity !== '休息') {
+            const powerTargets = getPowerTargetForIntensity(day.intensity);
+            if (powerTargets) {
+                powerTargetHtml = `<span class="power-target">${powerTargets.min}-${powerTargets.max}W</span>`;
+            }
+        }
+
         tr.innerHTML = `
             <td>Week ${day.week}</td>
             <td>${dateStr}</td>
             <td><span class="phase-badge phase-${day.phase}">${day.phase}</span></td>
-            <td><span class="intensity-badge intensity-${day.intensity}">${day.intensity}</span></td>
-            <td>${day.content}</td>
+            <td><span class="intensity-badge intensity-${day.intensity}">${day.intensity}</span> ${powerTargetHtml}</td>
+            <td>${dynamicContent}</td>
             <td>${day.distance > 0 ? day.distance + ' km' : '-'}</td>
             <td>${day.elevation > 0 ? day.elevation + ' m' : '-'}</td>
             <td>${day.hours > 0 ? day.hours + ' h' : '-'}</td>
@@ -299,6 +530,20 @@ function populateSchedule(filter = 'all') {
 
         tbody.appendChild(tr);
     });
+}
+
+// Get power target for intensity level
+function getPowerTargetForIntensity(intensity) {
+    if (!userFTP) return null;
+
+    const targets = {
+        '輕鬆': { min: calculatePower(55), max: calculatePower(70) },
+        '中等': { min: calculatePower(70), max: calculatePower(85) },
+        '高強度': { min: calculatePower(90), max: calculatePower(105) },
+        '最大': { min: calculatePower(105), max: calculatePower(120) }
+    };
+
+    return targets[intensity] || null;
 }
 
 // Format date short
@@ -400,9 +645,19 @@ function displayTodayTraining() {
     function displayTrainingDay(day, index) {
         todayPhase.textContent = day.phase;
         todayPhase.className = `today-phase phase-${day.phase}`;
-        todayIntensity.textContent = day.intensity;
+
+        // Show intensity with power target if FTP is set
+        const powerTarget = getPowerTargetForIntensity(day.intensity);
+        if (powerTarget && day.intensity !== '休息') {
+            todayIntensity.innerHTML = `${day.intensity} <span class="power-target">${powerTarget.min}-${powerTarget.max}W</span>`;
+        } else {
+            todayIntensity.textContent = day.intensity;
+        }
         todayIntensity.className = `today-intensity intensity-${day.intensity}`;
-        todayDescription.textContent = day.content;
+
+        // Show dynamic content with FTP-based power values
+        const dynamicContent = generateDynamicContent(day.content, day.intensity);
+        todayDescription.textContent = dynamicContent;
 
         todayDistance.textContent = day.distance > 0 ? `🚴 ${day.distance} km` : '';
         todayDistance.style.display = day.distance > 0 ? 'inline-flex' : 'none';
@@ -508,6 +763,33 @@ function openWorkoutModal(dayIndex) {
     const workout = convertToGarminWorkout(day, dayIndex);
     const workoutJson = JSON.stringify(workout, null, 2);
 
+    // Generate dynamic content with FTP
+    const dynamicContent = generateDynamicContent(day.content, day.intensity);
+
+    // Get power target for this intensity
+    const powerTarget = getPowerTargetForIntensity(day.intensity);
+    const powerTargetHtml = powerTarget ?
+        `<span class="power-target highlight">${powerTarget.min}-${powerTarget.max}W</span>` : '';
+
+    // Generate power zones display if FTP is set
+    const powerZonesHtml = userFTP ? `
+        <div class="power-zones-display">
+            <h4>您的功率區間 (FTP: ${userFTP}W)</h4>
+            <div class="zones-grid">
+                <div class="zone-item zone-1"><span class="zone-name">Z1 恢復</span><span class="zone-range">&lt;${calculatePower(55)}W</span></div>
+                <div class="zone-item zone-2"><span class="zone-name">Z2 耐力</span><span class="zone-range">${calculatePower(55)}-${calculatePower(75)}W</span></div>
+                <div class="zone-item zone-3"><span class="zone-name">Z3 節奏</span><span class="zone-range">${calculatePower(75)}-${calculatePower(90)}W</span></div>
+                <div class="zone-item zone-4"><span class="zone-name">Z4 閾值</span><span class="zone-range">${calculatePower(90)}-${calculatePower(105)}W</span></div>
+                <div class="zone-item zone-5"><span class="zone-name">Z5 VO2max</span><span class="zone-range">${calculatePower(105)}-${calculatePower(120)}W</span></div>
+                <div class="zone-item zone-6"><span class="zone-name">Z6 無氧</span><span class="zone-range">&gt;${calculatePower(120)}W</span></div>
+            </div>
+        </div>
+    ` : `
+        <div class="ftp-reminder">
+            <p>💡 設定您的 FTP 以顯示個人化功率目標</p>
+        </div>
+    `;
+
     modalContent.innerHTML = `
         <div class="modal-header">
             <h3>🚴 訓練詳情</h3>
@@ -518,13 +800,16 @@ function openWorkoutModal(dayIndex) {
                 <span class="training-date">${trainingDate ? formatDate(trainingDate) : `Week ${day.week} Day ${day.day}`}</span>
                 <span class="phase-badge phase-${day.phase}">${day.phase}</span>
                 <span class="intensity-badge intensity-${day.intensity}">${day.intensity}</span>
+                ${powerTargetHtml}
             </div>
 
             <div class="training-description">
-                <strong>訓練內容：</strong>${day.content}
+                <strong>訓練內容：</strong>${dynamicContent}
             </div>
 
             ${day.intensity !== '休息' ? `
+                ${powerZonesHtml}
+
                 <div class="workout-section">
                     <div class="workout-header">
                         <span class="workout-type-label">🚴 自行車訓練</span>

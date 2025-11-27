@@ -33,11 +33,24 @@
     <section class="hero">
         <div class="hero-overlay"></div>
         <div class="hero-content">
-            <!-- Race Date Setting -->
-            <div class="race-date-setting">
-                <label for="raceDateInput" class="race-date-label">設定比賽日期</label>
-                <input type="date" id="raceDateInput" class="race-date-input">
-                <button id="setRaceDateBtn" class="btn-set-date">確認</button>
+            <!-- User Settings -->
+            <div class="user-settings">
+                <div class="setting-group">
+                    <label for="raceDateInput" class="setting-label">比賽日期</label>
+                    <input type="date" id="raceDateInput" class="setting-input">
+                </div>
+                <div class="setting-group">
+                    <label for="ftpInput" class="setting-label">FTP (瓦)</label>
+                    <input type="number" id="ftpInput" class="setting-input" placeholder="例：200" min="100" max="500">
+                </div>
+                <button id="saveSettingsBtn" class="btn-save-settings">儲存設定</button>
+            </div>
+
+            <!-- FTP Display -->
+            <div class="ftp-display" id="ftpDisplay">
+                <span class="ftp-label">您的 FTP</span>
+                <span class="ftp-value" id="displayFTP">未設定</span>
+                <span class="ftp-unit">W</span>
             </div>
 
             <div class="countdown-container">
@@ -242,7 +255,7 @@
 
             <div class="pacing-overview">
                 <div class="pacing-intro">
-                    <p>西進武嶺的配速策略是成功的關鍵。根據路線特性，我們將全程分為 <strong>6 個區段</strong>，每個區段有不同的目標功率和配速要求。</p>
+                    <p>西進武嶺的配速策略是成功的關鍵。根據路線特性，我們將全程分為 <strong>7 個區段</strong>，每個區段有不同的目標功率和配速要求。</p>
                 </div>
             </div>
 
@@ -460,39 +473,83 @@
                             <ul>
                                 <li>坡度相對緩和，可稍微恢復</li>
                                 <li>準備最後衝刺的體力分配</li>
-                                <li>昆陽停車場後開始最後爬升</li>
-                                <li>保留 10-15% 體力給最後 7km</li>
+                                <li>鳶峰觀景台可稍作休息</li>
+                                <li>保留 15-20% 體力給最後 7km</li>
                             </ul>
                         </div>
                     </div>
                 </div>
 
                 <!-- Segment 6 -->
-                <div class="pacing-card highlight-card">
+                <div class="pacing-card">
                     <div class="pacing-header segment-6">
                         <div class="segment-number">6</div>
                         <div class="segment-title">
-                            <h3>鳶峰 → 武嶺</h3>
-                            <span class="segment-subtitle">最終衝刺段</span>
+                            <h3>鳶峰 → 昆陽</h3>
+                            <span class="segment-subtitle">高海拔適應段</span>
                         </div>
                         <div class="segment-stats">
-                            <span>7 km</span>
-                            <span>520m ↑</span>
+                            <span>3 km</span>
+                            <span>335m ↑</span>
                         </div>
                     </div>
                     <div class="pacing-body">
                         <div class="pacing-metrics">
                             <div class="metric">
                                 <span class="metric-label">目標時間</span>
-                                <span class="metric-value">32-37 分鐘</span>
+                                <span class="metric-value">15-18 分鐘</span>
                             </div>
                             <div class="metric">
                                 <span class="metric-label">目標功率</span>
-                                <span class="metric-value">FTP 70-80%</span>
+                                <span class="metric-value">FTP 65-72%</span>
                             </div>
                             <div class="metric">
                                 <span class="metric-label">平均坡度</span>
-                                <span class="metric-value">6-10%</span>
+                                <span class="metric-value">8-12%</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">心率區間</span>
+                                <span class="metric-value">Z3-Z4</span>
+                            </div>
+                        </div>
+                        <div class="pacing-tips">
+                            <h4>配速要點</h4>
+                            <ul>
+                                <li>海拔超過 2800m，氧氣更加稀薄</li>
+                                <li>這段坡度較陡，保持耐心</li>
+                                <li>昆陽停車場是最後補給點</li>
+                                <li>評估體力，準備最後衝刺</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Segment 7 -->
+                <div class="pacing-card highlight-card">
+                    <div class="pacing-header segment-7">
+                        <div class="segment-number">7</div>
+                        <div class="segment-title">
+                            <h3>昆陽 → 武嶺</h3>
+                            <span class="segment-subtitle">最終衝刺段</span>
+                        </div>
+                        <div class="segment-stats">
+                            <span>4 km</span>
+                            <span>185m ↑</span>
+                        </div>
+                    </div>
+                    <div class="pacing-body">
+                        <div class="pacing-metrics">
+                            <div class="metric">
+                                <span class="metric-label">目標時間</span>
+                                <span class="metric-value">17-20 分鐘</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">目標功率</span>
+                                <span class="metric-value">FTP 70-85%</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">平均坡度</span>
+                                <span class="metric-value">4-8%</span>
                             </div>
                             <div class="metric">
                                 <span class="metric-label">心率區間</span>
@@ -502,7 +559,7 @@
                         <div class="pacing-tips">
                             <h4>配速要點</h4>
                             <ul>
-                                <li>最後 3km 可開始提高強度</li>
+                                <li>最後 2km 開始全力輸出</li>
                                 <li>看到武嶺牌樓全力衝刺</li>
                                 <li>海拔 3275m 氧氣非常稀薄</li>
                                 <li>專注目標，相信訓練成果！</li>
@@ -564,11 +621,19 @@
                         <span>3:15</span>
                         <span>保留體力</span>
                     </div>
+                    <div class="summary-row">
+                        <span>鳶峰→昆陽</span>
+                        <span>3km</span>
+                        <span>50km</span>
+                        <span>17min</span>
+                        <span>3:32</span>
+                        <span>最後補給</span>
+                    </div>
                     <div class="summary-row highlight">
-                        <span>鳶峰→武嶺</span>
-                        <span>7km</span>
+                        <span>昆陽→武嶺</span>
+                        <span>4km</span>
                         <span>54km</span>
-                        <span>35min</span>
+                        <span>18min</span>
                         <span>3:50</span>
                         <span>最終衝刺</span>
                     </div>

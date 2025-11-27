@@ -148,6 +148,143 @@ body {
     max-width: 800px;
 }
 
+/* User Settings */
+.user-settings {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+    padding: 15px 20px;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 30px;
+    backdrop-filter: blur(10px);
+}
+
+.setting-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.setting-label {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.8);
+    white-space: nowrap;
+}
+
+.setting-input {
+    padding: 8px 15px;
+    border: 2px solid rgba(245, 166, 35, 0.5);
+    border-radius: 20px;
+    background: rgba(0, 0, 0, 0.5);
+    color: var(--white);
+    font-size: 0.95rem;
+    font-family: inherit;
+    outline: none;
+    transition: var(--transition);
+    width: 140px;
+}
+
+.setting-input[type="number"] {
+    width: 100px;
+}
+
+.setting-input:focus {
+    border-color: var(--primary-color);
+    background: rgba(245, 166, 35, 0.15);
+    box-shadow: 0 0 15px rgba(245, 166, 35, 0.3);
+}
+
+.setting-input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.btn-save-settings {
+    padding: 8px 20px;
+    background: var(--primary-color);
+    color: var(--secondary-color);
+    border: none;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-save-settings:hover {
+    background: #ffb84d;
+    transform: scale(1.05);
+}
+
+/* FTP Display */
+.ftp-display {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 20px;
+    background: linear-gradient(135deg, rgba(0, 184, 148, 0.8), rgba(0, 150, 120, 0.8));
+    border-radius: 25px;
+    margin-bottom: 15px;
+}
+
+.ftp-display.not-set {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.ftp-label {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.ftp-value {
+    font-size: 1.3rem;
+    font-weight: 900;
+    color: var(--white);
+}
+
+.ftp-unit {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* Power Zone Colors */
+.power-zone {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.power-zone.zone-1 { background: #90caf9; color: #1565c0; }
+.power-zone.zone-2 { background: #a5d6a7; color: #2e7d32; }
+.power-zone.zone-3 { background: #fff59d; color: #f57f17; }
+.power-zone.zone-4 { background: #ffab91; color: #d84315; }
+.power-zone.zone-5 { background: #ef9a9a; color: #c62828; }
+.power-zone.zone-6 { background: #ce93d8; color: #7b1fa2; }
+
+/* Power Target Display */
+.power-target {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    background: rgba(0, 184, 148, 0.2);
+    border: 1px solid rgba(0, 184, 148, 0.5);
+    border-radius: 15px;
+    font-size: 0.85rem;
+    color: #00b894;
+    font-weight: 600;
+}
+
+.power-target.highlight {
+    background: rgba(245, 166, 35, 0.2);
+    border-color: rgba(245, 166, 35, 0.5);
+    color: var(--primary-color);
+}
+
 /* Race Date Setting */
 .race-date-setting {
     display: flex;
@@ -732,6 +869,7 @@ body {
 .pacing-header.segment-4 { background: linear-gradient(135deg, #fdcb6e, #f5a623); }
 .pacing-header.segment-5 { background: linear-gradient(135deg, #e17055, #d35843); }
 .pacing-header.segment-6 { background: linear-gradient(135deg, #d63031, #c0392b); }
+.pacing-header.segment-7 { background: linear-gradient(135deg, #9b59b6, #8e44ad); }
 
 .segment-number {
     width: 40px;
@@ -1640,6 +1778,71 @@ body {
 .btn-view-workout:hover {
     transform: scale(1.05);
     box-shadow: 0 4px 15px rgba(245, 166, 35, 0.4);
+}
+
+/* Power Zones Display */
+.power-zones-display {
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    padding: 20px;
+    border-radius: var(--border-radius);
+    margin-bottom: 20px;
+}
+
+.power-zones-display h4 {
+    text-align: center;
+    margin-bottom: 15px;
+    color: var(--secondary-color);
+    font-size: 1rem;
+}
+
+.zones-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+.zone-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px 8px;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.zone-item.zone-1 { background: rgba(144, 202, 249, 0.3); border-left: 4px solid #90caf9; }
+.zone-item.zone-2 { background: rgba(165, 214, 167, 0.3); border-left: 4px solid #a5d6a7; }
+.zone-item.zone-3 { background: rgba(255, 245, 157, 0.3); border-left: 4px solid #fff59d; }
+.zone-item.zone-4 { background: rgba(255, 171, 145, 0.3); border-left: 4px solid #ffab91; }
+.zone-item.zone-5 { background: rgba(239, 154, 154, 0.3); border-left: 4px solid #ef9a9a; }
+.zone-item.zone-6 { background: rgba(206, 147, 216, 0.3); border-left: 4px solid #ce93d8; }
+
+.zone-name {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-color);
+    margin-bottom: 4px;
+}
+
+.zone-range {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--secondary-color);
+}
+
+/* FTP Reminder */
+.ftp-reminder {
+    background: linear-gradient(135deg, rgba(245, 166, 35, 0.15), rgba(255, 107, 53, 0.15));
+    padding: 15px 20px;
+    border-radius: var(--border-radius);
+    border-left: 4px solid var(--primary-color);
+    margin-bottom: 20px;
+}
+
+.ftp-reminder p {
+    margin: 0;
+    color: var(--text-color);
+    font-size: 0.95rem;
 }
 
 /* Responsive */
