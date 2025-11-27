@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>西進武嶺 SUB4 16週訓練計劃 | Garmin 整合</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 48 48' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='24' cy='24' r='23' fill='%231a1a2e' stroke='%23f5a623' stroke-width='2'/%3E%3Cpath d='M12 32 L24 12 L36 32' fill='none' stroke='%2300d4ff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='24' cy='28' r='4' fill='%23f5a623'/%3E%3C/svg%3E">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <nav class="nav">
+            <div class="nav-logos">
+                <span class="nav-brand">西進武嶺 SUB4</span>
+                <span class="nav-logo-separator">|</span>
+                <img src="images/garmin-logo-white.svg" alt="Garmin" class="nav-logo garmin-logo" onerror="this.style.display='none'">
+            </div>
+            <ul class="nav-links">
+                <li><a href="#goals">目標</a></li>
+                <li><a href="#schedule">訓練計劃</a></li>
+                <li><a href="#pacing">配速策略</a></li>
+                <li><a href="#strategy">訓練策略</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-overlay"></div>
+        <div class="hero-content">
+            <!-- Race Date Setting -->
+            <div class="race-date-setting">
+                <label for="raceDateInput" class="race-date-label">設定比賽日期</label>
+                <input type="date" id="raceDateInput" class="race-date-input">
+                <button id="setRaceDateBtn" class="btn-set-date">確認</button>
+            </div>
+
+            <div class="countdown-container">
+                <span class="countdown-label">距離比賽還有</span>
+                <div class="countdown-timer">
+                    <div class="countdown-item">
+                        <span class="countdown-value" id="countdown-days">---</span>
+                        <span class="countdown-unit">天</span>
+                    </div>
+                    <div class="countdown-item">
+                        <span class="countdown-value" id="countdown-hours">--</span>
+                        <span class="countdown-unit">時</span>
+                    </div>
+                    <div class="countdown-item">
+                        <span class="countdown-value" id="countdown-minutes">--</span>
+                        <span class="countdown-unit">分</span>
+                    </div>
+                    <div class="countdown-item">
+                        <span class="countdown-value" id="countdown-seconds">--</span>
+                        <span class="countdown-unit">秒</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hero-title-row">
+                <h1>西進武嶺 SUB4</h1>
+                <div class="hero-date">
+                    <span class="date-label">比賽日期</span>
+                    <span class="date-value" id="displayRaceDate">請設定比賽日期</span>
+                </div>
+            </div>
+
+            <h2>16週專項訓練計劃</h2>
+
+            <div class="hero-stats">
+                <div class="stat">
+                    <span class="stat-icon">🚴</span>
+                    <span class="stat-value">54km</span>
+                    <span class="stat-label">總距離</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-icon">⛰️</span>
+                    <span class="stat-value">2,000m+</span>
+                    <span class="stat-label">爬升</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-icon">🏔️</span>
+                    <span class="stat-value">3,275m</span>
+                    <span class="stat-label">最高點</span>
+                </div>
+            </div>
+
+            <div class="hero-slogan-card">
+                <div class="hero-slogan">
+                    <div class="slogan-main">挑戰自我極限・征服台灣之巔</div>
+                    <div class="slogan-sub">從埔里地理中心碑出發<br>攻頂台灣公路最高點</div>
+                </div>
+            </div>
+
+            <div class="today-training" id="todayTraining">
+                <div class="today-training-left">
+                    <div class="today-training-header">
+                        <span class="today-label" id="todayLabel">今日訓練</span>
+                    </div>
+                    <div class="today-training-content">
+                        <div class="today-tags">
+                            <div class="today-phase" id="todayPhase"></div>
+                            <div class="today-intensity" id="todayIntensity"></div>
+                        </div>
+                        <div class="today-description" id="todayDescription"></div>
+                        <div class="today-stats">
+                            <span class="today-stat" id="todayDistance"></span>
+                            <span class="today-stat" id="todayElevation"></span>
+                            <span class="today-stat" id="todayHours"></span>
+                        </div>
+                    </div>
+                    <div class="today-note" id="todayNote"></div>
+                </div>
+                <div class="today-actions" id="todayActions"></div>
+            </div>
+        </div>
+        <div class="scroll-indicator">
+            <span>向下滾動</span>
+            <div class="scroll-arrow"></div>
+        </div>
+    </section>
+
+    <!-- Goals Section -->
+    <section id="goals" class="section goals-section">
+        <div class="container">
+            <h2 class="section-title">挑戰目標</h2>
+            <div class="goal-highlight">
+                <div class="goal-main">
+                    <span class="goal-text">突破</span>
+                    <span class="goal-number">4</span>
+                    <span class="goal-text">小時大關</span>
+                </div>
+                <p class="goal-description">
+                    西進武嶺是台灣最經典的自行車挑戰路線，從埔里地理中心碑到武嶺，全長約 <strong>54公里</strong>，爬升超過 <strong>2,000公尺</strong>。
+                    SUB4（4小時內完成）是業餘車手的重要里程碑，需要優秀的體能與精準的配速策略。
+                </p>
+            </div>
+
+            <div class="route-info">
+                <h3>路線概覽</h3>
+                <div class="route-segments">
+                    <div class="segment-card">
+                        <div class="segment-header">
+                            <span class="segment-name">起點：埔里地理中心碑</span>
+                            <span class="segment-elevation">海拔 450m</span>
+                        </div>
+                    </div>
+                    <div class="segment-card">
+                        <div class="segment-header">
+                            <span class="segment-name">人止關</span>
+                            <span class="segment-elevation">海拔 700m</span>
+                        </div>
+                        <div class="segment-info">里程 14km | 坡度 2-4%</div>
+                    </div>
+                    <div class="segment-card">
+                        <div class="segment-header">
+                            <span class="segment-name">霧社</span>
+                            <span class="segment-elevation">海拔 1,148m</span>
+                        </div>
+                        <div class="segment-info">里程 24km | 坡度 4-6%</div>
+                    </div>
+                    <div class="segment-card">
+                        <div class="segment-header">
+                            <span class="segment-name">清境農場</span>
+                            <span class="segment-elevation">海拔 1,750m</span>
+                        </div>
+                        <div class="segment-info">里程 32km | 坡度 5-8%</div>
+                    </div>
+                    <div class="segment-card">
+                        <div class="segment-header">
+                            <span class="segment-name">翠峰</span>
+                            <span class="segment-elevation">海拔 2,309m</span>
+                        </div>
+                        <div class="segment-info">里程 41km | 坡度 6-10%</div>
+                    </div>
+                    <div class="segment-card">
+                        <div class="segment-header">
+                            <span class="segment-name">鳶峰</span>
+                            <span class="segment-elevation">海拔 2,756m</span>
+                        </div>
+                        <div class="segment-info">里程 47km | 坡度 5-8%</div>
+                    </div>
+                    <div class="segment-card highlight">
+                        <div class="segment-header">
+                            <span class="segment-name">終點：武嶺</span>
+                            <span class="segment-elevation">海拔 3,275m</span>
+                        </div>
+                        <div class="segment-info">里程 54km | 台灣公路最高點</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="comparison-table">
+                <div class="table-header">
+                    <div class="col">目標配分</div>
+                    <div class="col">區段</div>
+                    <div class="col">距離</div>
+                    <div class="col">目標時間</div>
+                    <div class="col">平均速度</div>
+                </div>
+                <div class="table-row">
+                    <div class="col">第一段</div>
+                    <div class="col">埔里 → 霧社</div>
+                    <div class="col">24km</div>
+                    <div class="col highlight">1:20:00</div>
+                    <div class="col">18.0 km/h</div>
+                </div>
+                <div class="table-row">
+                    <div class="col">第二段</div>
+                    <div class="col">霧社 → 翠峰</div>
+                    <div class="col">17km</div>
+                    <div class="col highlight">1:25:00</div>
+                    <div class="col">12.0 km/h</div>
+                </div>
+                <div class="table-row">
+                    <div class="col">第三段</div>
+                    <div class="col">翠峰 → 武嶺</div>
+                    <div class="col">13km</div>
+                    <div class="col highlight">1:05:00</div>
+                    <div class="col">12.0 km/h</div>
+                </div>
+                <div class="table-row total">
+                    <div class="col"><strong>總計</strong></div>
+                    <div class="col"><strong>全程</strong></div>
+                    <div class="col"><strong>54km</strong></div>
+                    <div class="col highlight"><strong>3:50:00</strong></div>
+                    <div class="col"><strong>14.1 km/h</strong></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pacing Strategy Section -->
+    <section id="pacing" class="section pacing-section">
+        <div class="container">
+            <h2 class="section-title">賽事分段配速策略</h2>
+
+            <div class="pacing-overview">
+                <div class="pacing-intro">
+                    <p>西進武嶺的配速策略是成功的關鍵。根據路線特性，我們將全程分為 <strong>6 個區段</strong>，每個區段有不同的目標功率和配速要求。</p>
+                </div>
+            </div>
+
+            <div class="pacing-segments">
+                <!-- Segment 1 -->
+                <div class="pacing-card">
+                    <div class="pacing-header segment-1">
+                        <div class="segment-number">1</div>
+                        <div class="segment-title">
+                            <h3>埔里 → 人止關</h3>
+                            <span class="segment-subtitle">暖身段・保守配速</span>
+                        </div>
+                        <div class="segment-stats">
+                            <span>14 km</span>
+                            <span>250m ↑</span>
+                        </div>
+                    </div>
+                    <div class="pacing-body">
+                        <div class="pacing-metrics">
+                            <div class="metric">
+                                <span class="metric-label">目標時間</span>
+                                <span class="metric-value">35-40 分鐘</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">目標功率</span>
+                                <span class="metric-value">FTP 65-70%</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">平均坡度</span>
+                                <span class="metric-value">2-4%</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">心率區間</span>
+                                <span class="metric-value">Z2</span>
+                            </div>
+                        </div>
+                        <div class="pacing-tips">
+                            <h4>配速要點</h4>
+                            <ul>
+                                <li>前 5km 保持輕鬆，讓身體充分暖身</li>
+                                <li>避免一開始就追趕前方車手</li>
+                                <li>保持穩定踏頻 80-90 rpm</li>
+                                <li>開始規律補給（每 15-20 分鐘）</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Segment 2 -->
+                <div class="pacing-card">
+                    <div class="pacing-header segment-2">
+                        <div class="segment-number">2</div>
+                        <div class="segment-title">
+                            <h3>人止關 → 霧社</h3>
+                            <span class="segment-subtitle">穩定段・建立節奏</span>
+                        </div>
+                        <div class="segment-stats">
+                            <span>10 km</span>
+                            <span>450m ↑</span>
+                        </div>
+                    </div>
+                    <div class="pacing-body">
+                        <div class="pacing-metrics">
+                            <div class="metric">
+                                <span class="metric-label">目標時間</span>
+                                <span class="metric-value">40-45 分鐘</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">目標功率</span>
+                                <span class="metric-value">FTP 70-75%</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">平均坡度</span>
+                                <span class="metric-value">4-6%</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">心率區間</span>
+                                <span class="metric-value">Z2-Z3</span>
+                            </div>
+                        </div>
+                        <div class="pacing-tips">
+                            <h4>配速要點</h4>
+                            <ul>
+                                <li>坡度開始增加，找到舒適的爬坡節奏</li>
+                                <li>霧社前的幾個髮夾彎保持穩定</li>
+                                <li>可在霧社 7-11 稍作補給（不超過 3 分鐘）</li>
+                                <li>評估自身狀態，調整後半段策略</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Segment 3 -->
+                <div class="pacing-card">
+                    <div class="pacing-header segment-3">
+                        <div class="segment-number">3</div>
+                        <div class="segment-title">
+                            <h3>霧社 → 清境</h3>
+                            <span class="segment-subtitle">爬升段・穩定輸出</span>
+                        </div>
+                        <div class="segment-stats">
+                            <span>8 km</span>
+                            <span>600m ↑</span>
+                        </div>
+                    </div>
+                    <div class="pacing-body">
+                        <div class="pacing-metrics">
+                            <div class="metric">
+                                <span class="metric-label">目標時間</span>
+                                <span class="metric-value">35-40 分鐘</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">目標功率</span>
+                                <span class="metric-value">FTP 70-78%</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">平均坡度</span>
+                                <span class="metric-value">5-8%</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">心率區間</span>
+                                <span class="metric-value">Z3</span>
+                            </div>
+                        </div>
+                        <div class="pacing-tips">
+                            <h4>配速要點</h4>
+                            <ul>
+                                <li>這段是關鍵的爬升段，保持耐心</li>
+                                <li>經過台 14 甲 8K 牌後坡度變陡</li>
+                                <li>善用彎道內側減少坡度</li>
+                                <li>持續穩定補給，注意電解質</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Segment 4 -->
+                <div class="pacing-card">
+                    <div class="pacing-header segment-4">
+                        <div class="segment-number">4</div>
+                        <div class="segment-title">
+                            <h3>清境 → 翠峰</h3>
+                            <span class="segment-subtitle">高海拔適應段</span>
+                        </div>
+                        <div class="segment-stats">
+                            <span>9 km</span>
+                            <span>560m ↑</span>
+                        </div>
+                    </div>
+                    <div class="pacing-body">
+                        <div class="pacing-metrics">
+                            <div class="metric">
+                                <span class="metric-label">目標時間</span>
+                                <span class="metric-value">45-50 分鐘</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">目標功率</span>
+                                <span class="metric-value">FTP 65-72%</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">平均坡度</span>
+                                <span class="metric-value">6-10%</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">心率區間</span>
+                                <span class="metric-value">Z3-Z4</span>
+                            </div>
+                        </div>
+                        <div class="pacing-tips">
+                            <h4>配速要點</h4>
+                            <ul>
+                                <li>海拔超過 2000m，氧氣開始稀薄</li>
+                                <li>功率會自然下降 5-10%，不要硬撐</li>
+                                <li>保持呼吸節奏，不要憋氣</li>
+                                <li>台 14 甲 14K 後有幾段陡坡需注意</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Segment 5 -->
+                <div class="pacing-card">
+                    <div class="pacing-header segment-5">
+                        <div class="segment-number">5</div>
+                        <div class="segment-title">
+                            <h3>翠峰 → 鳶峰</h3>
+                            <span class="segment-subtitle">高海拔緩坡段</span>
+                        </div>
+                        <div class="segment-stats">
+                            <span>6 km</span>
+                            <span>450m ↑</span>
+                        </div>
+                    </div>
+                    <div class="pacing-body">
+                        <div class="pacing-metrics">
+                            <div class="metric">
+                                <span class="metric-label">目標時間</span>
+                                <span class="metric-value">28-32 分鐘</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">目標功率</span>
+                                <span class="metric-value">FTP 65-70%</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">平均坡度</span>
+                                <span class="metric-value">5-8%</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">心率區間</span>
+                                <span class="metric-value">Z3</span>
+                            </div>
+                        </div>
+                        <div class="pacing-tips">
+                            <h4>配速要點</h4>
+                            <ul>
+                                <li>坡度相對緩和，可稍微恢復</li>
+                                <li>準備最後衝刺的體力分配</li>
+                                <li>昆陽停車場後開始最後爬升</li>
+                                <li>保留 10-15% 體力給最後 7km</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Segment 6 -->
+                <div class="pacing-card highlight-card">
+                    <div class="pacing-header segment-6">
+                        <div class="segment-number">6</div>
+                        <div class="segment-title">
+                            <h3>鳶峰 → 武嶺</h3>
+                            <span class="segment-subtitle">最終衝刺段</span>
+                        </div>
+                        <div class="segment-stats">
+                            <span>7 km</span>
+                            <span>520m ↑</span>
+                        </div>
+                    </div>
+                    <div class="pacing-body">
+                        <div class="pacing-metrics">
+                            <div class="metric">
+                                <span class="metric-label">目標時間</span>
+                                <span class="metric-value">32-37 分鐘</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">目標功率</span>
+                                <span class="metric-value">FTP 70-80%</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">平均坡度</span>
+                                <span class="metric-value">6-10%</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">心率區間</span>
+                                <span class="metric-value">Z4</span>
+                            </div>
+                        </div>
+                        <div class="pacing-tips">
+                            <h4>配速要點</h4>
+                            <ul>
+                                <li>最後 3km 可開始提高強度</li>
+                                <li>看到武嶺牌樓全力衝刺</li>
+                                <li>海拔 3275m 氧氣非常稀薄</li>
+                                <li>專注目標，相信訓練成果！</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pacing Summary -->
+            <div class="pacing-summary">
+                <h3>SUB4 配速總結</h3>
+                <div class="summary-table">
+                    <div class="summary-row header">
+                        <span>區段</span>
+                        <span>里程</span>
+                        <span>累計里程</span>
+                        <span>目標時間</span>
+                        <span>累計時間</span>
+                        <span>備註</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>埔里→人止關</span>
+                        <span>14km</span>
+                        <span>14km</span>
+                        <span>37min</span>
+                        <span>0:37</span>
+                        <span>暖身保守</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>人止關→霧社</span>
+                        <span>10km</span>
+                        <span>24km</span>
+                        <span>43min</span>
+                        <span>1:20</span>
+                        <span>建立節奏</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>霧社→清境</span>
+                        <span>8km</span>
+                        <span>32km</span>
+                        <span>37min</span>
+                        <span>1:57</span>
+                        <span>穩定輸出</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>清境→翠峰</span>
+                        <span>9km</span>
+                        <span>41km</span>
+                        <span>48min</span>
+                        <span>2:45</span>
+                        <span>高海拔適應</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>翠峰→鳶峰</span>
+                        <span>6km</span>
+                        <span>47km</span>
+                        <span>30min</span>
+                        <span>3:15</span>
+                        <span>保留體力</span>
+                    </div>
+                    <div class="summary-row highlight">
+                        <span>鳶峰→武嶺</span>
+                        <span>7km</span>
+                        <span>54km</span>
+                        <span>35min</span>
+                        <span>3:50</span>
+                        <span>最終衝刺</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Training Schedule Section -->
+    <section id="schedule" class="section schedule-section">
+        <div class="container">
+            <h2 class="section-title">週訓練量總覽</h2>
+
+            <!-- Weekly Summary with Integrated Phases -->
+            <div class="weekly-summary">
+                <div class="summary-cards">
+                    <div class="summary-card" data-phase="base">
+                        <div class="card-phase-header">
+                            <span class="phase-icon">🏗️</span>
+                            <div class="phase-info">
+                                <h4>基礎期</h4>
+                                <span class="phase-weeks">Week 1-4</span>
+                            </div>
+                        </div>
+                        <p class="phase-description">建立有氧基礎，提升基礎體能</p>
+                        <div class="card-content">
+                            <div class="card-stat"><span class="label">週騎乘</span><span class="value">150-200km</span></div>
+                            <div class="card-stat"><span class="label">爬升</span><span class="value">2,000-3,000m</span></div>
+                            <div class="card-stat"><span class="label">長騎</span><span class="value">80-100km</span></div>
+                            <div class="card-stat total"><span class="label">週時數</span><span class="value">8-10h</span></div>
+                        </div>
+                    </div>
+                    <div class="summary-card" data-phase="build">
+                        <div class="card-phase-header">
+                            <span class="phase-icon">💪</span>
+                            <div class="phase-info">
+                                <h4>建構期</h4>
+                                <span class="phase-weeks">Week 5-8</span>
+                            </div>
+                        </div>
+                        <p class="phase-description">提升閾值功率，強化爬坡能力</p>
+                        <div class="card-content">
+                            <div class="card-stat"><span class="label">週騎乘</span><span class="value">200-280km</span></div>
+                            <div class="card-stat"><span class="label">爬升</span><span class="value">3,500-5,000m</span></div>
+                            <div class="card-stat"><span class="label">長騎</span><span class="value">100-130km</span></div>
+                            <div class="card-stat total"><span class="label">週時數</span><span class="value">10-14h</span></div>
+                        </div>
+                    </div>
+                    <div class="summary-card featured" data-phase="peak">
+                        <div class="card-phase-header">
+                            <span class="phase-icon">🔥</span>
+                            <div class="phase-info">
+                                <h4>巔峰期</h4>
+                                <span class="phase-weeks">Week 9-12</span>
+                            </div>
+                        </div>
+                        <p class="phase-description">最大訓練量，模擬賽事強度</p>
+                        <div class="card-content">
+                            <div class="card-stat"><span class="label">週騎乘</span><span class="value">250-320km</span></div>
+                            <div class="card-stat"><span class="label">爬升</span><span class="value">4,500-6,000m</span></div>
+                            <div class="card-stat"><span class="label">長騎</span><span class="value">120-150km</span></div>
+                            <div class="card-stat total"><span class="label">週時數</span><span class="value">12-16h</span></div>
+                        </div>
+                    </div>
+                    <div class="summary-card" data-phase="taper">
+                        <div class="card-phase-header">
+                            <span class="phase-icon">🎯</span>
+                            <div class="phase-info">
+                                <h4>減量期</h4>
+                                <span class="phase-weeks">Week 13-16</span>
+                            </div>
+                        </div>
+                        <p class="phase-description">恢復體能，迎接比賽</p>
+                        <div class="card-content">
+                            <div class="card-stat"><span class="label">週騎乘</span><span class="value">80-180km</span></div>
+                            <div class="card-stat"><span class="label">爬升</span><span class="value">1,500-3,000m</span></div>
+                            <div class="card-stat"><span class="label">長騎</span><span class="value">60-100km</span></div>
+                            <div class="card-stat total"><span class="label">週時數</span><span class="value">5-10h</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="total-training">
+                    <div class="total-item">
+                        <span class="total-label">總訓練天數</span>
+                        <span class="total-value">112天</span>
+                    </div>
+                    <div class="total-item">
+                        <span class="total-label">總騎乘里程</span>
+                        <span class="total-value">3,200km</span>
+                    </div>
+                    <div class="total-item">
+                        <span class="total-label">總爬升高度</span>
+                        <span class="total-value">55,000m</span>
+                    </div>
+                    <div class="total-item">
+                        <span class="total-label">總訓練時數</span>
+                        <span class="total-value">160h</span>
+                    </div>
+                </div>
+
+                <!-- Weekly Mileage Chart -->
+                <div class="weekly-chart-container">
+                    <h3>每週訓練里程趨勢</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="weeklyMileageChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Daily Schedule -->
+            <div class="daily-schedule">
+                <h3>每日訓練計劃</h3>
+                <div class="schedule-filters">
+                    <button class="filter-btn active" data-filter="all">全部</button>
+                    <button class="filter-btn" data-filter="基礎期">基礎期</button>
+                    <button class="filter-btn" data-filter="建構期">建構期</button>
+                    <button class="filter-btn" data-filter="巔峰期">巔峰期</button>
+                    <button class="filter-btn" data-filter="減量期">減量期</button>
+                    <button class="filter-btn" data-filter="賽前週">賽前週</button>
+                </div>
+                <div class="schedule-table-container">
+                    <table class="schedule-table" id="scheduleTable">
+                        <thead>
+                            <tr>
+                                <th>週次</th>
+                                <th>日期</th>
+                                <th>階段</th>
+                                <th>強度</th>
+                                <th>訓練內容</th>
+                                <th>距離</th>
+                                <th>爬升</th>
+                                <th>時數</th>
+                                <th>Garmin</th>
+                            </tr>
+                        </thead>
+                        <tbody id="scheduleBody">
+                            <!-- Populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Strategy Section -->
+    <section id="strategy" class="section strategy-section">
+        <div class="container">
+            <h2 class="section-title">訓練策略</h2>
+
+            <div class="strategies">
+                <!-- Endurance Strategy -->
+                <div class="strategy-card endurance-card">
+                    <div class="strategy-header">
+                        <span class="strategy-icon">🚴</span>
+                        <h3>有氧耐力訓練</h3>
+                    </div>
+                    <div class="strategy-target">
+                        <span class="from">3-4 小時</span>
+                        <span class="arrow">→</span>
+                        <span class="to">持續穩定輸出</span>
+                    </div>
+                    <ul class="strategy-methods">
+                        <li>每週 1 次長距離騎乘（100-150km）</li>
+                        <li>Zone 2 強度為主（FTP 55-75%）</li>
+                        <li>練習長時間持續踩踏 3-5 小時</li>
+                        <li>模擬比賽補給策略</li>
+                    </ul>
+                </div>
+
+                <!-- Climbing Strategy -->
+                <div class="strategy-card climbing-card">
+                    <div class="strategy-header">
+                        <span class="strategy-icon">⛰️</span>
+                        <h3>爬坡專項訓練</h3>
+                    </div>
+                    <div class="strategy-target">
+                        <span class="from">爬升能力</span>
+                        <span class="arrow">→</span>
+                        <span class="to">高海拔適應</span>
+                    </div>
+                    <ul class="strategy-methods">
+                        <li>每週 2-3 次爬坡訓練</li>
+                        <li>模擬武嶺坡度（5-10%）的長爬坡</li>
+                        <li>練習不同坡度的節奏控制</li>
+                        <li>提前實地踩點，適應高海拔</li>
+                    </ul>
+                </div>
+
+                <!-- Threshold Strategy -->
+                <div class="strategy-card threshold-card">
+                    <div class="strategy-header">
+                        <span class="strategy-icon">💪</span>
+                        <h3>閾值功率提升</h3>
+                    </div>
+                    <div class="strategy-target">
+                        <span class="from">FTP</span>
+                        <span class="arrow">→</span>
+                        <span class="to">提升 5-10%</span>
+                    </div>
+                    <ul class="strategy-methods">
+                        <li>每週 1-2 次 Sweet Spot 訓練（FTP 88-94%）</li>
+                        <li>閾值間歇：2x20min @ FTP</li>
+                        <li>爬坡間歇：5x5min @ 105% FTP</li>
+                        <li>每 4 週進行 FTP 測試</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Key Tips -->
+            <div class="key-tips">
+                <h3>SUB4 關鍵要點</h3>
+                <div class="tips-grid">
+                    <div class="tip-card">
+                        <span class="tip-icon">⚡</span>
+                        <h4>功率管理</h4>
+                        <p>前半段保守配速，控制在 FTP 65-75%，保留體力給後半段高海拔路段。</p>
+                    </div>
+                    <div class="tip-card">
+                        <span class="tip-icon">🥤</span>
+                        <h4>補給策略</h4>
+                        <p>每 20 分鐘補給一次，全程攝取 60-90g 碳水化合物/小時，注意電解質補充。</p>
+                    </div>
+                    <div class="tip-card">
+                        <span class="tip-icon">🫁</span>
+                        <h4>高海拔適應</h4>
+                        <p>海拔 2500m 以上功率下降 10-15% 是正常的，專注呼吸節奏，不要硬撐。</p>
+                    </div>
+                    <div class="tip-card">
+                        <span class="tip-icon">🧘</span>
+                        <h4>心理準備</h4>
+                        <p>分段目標管理，專注當下區段。痛苦是暫時的，完成是永恆的。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-tags">
+                    <span class="tag">#西進武嶺</span>
+                    <span class="tag">#SUB4</span>
+                    <span class="tag">#Garmin</span>
+                    <span class="tag">#16週訓練計劃</span>
+                    <span class="tag">#挑戰自我</span>
+                </div>
+                <p class="footer-copyright">西進武嶺 SUB4 16週訓練計劃</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Workout Modal -->
+    <div class="workout-modal" id="workoutModal">
+        <div class="workout-modal-content" id="workoutModalContent">
+            <!-- Content populated by JavaScript -->
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

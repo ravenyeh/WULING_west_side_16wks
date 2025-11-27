@@ -1,0 +1,23 @@
+{
+  "name": "wuling-west-side-16wks-training-plan",
+  "version": "1.0.0",
+  "description": "西進武嶺 SUB4 16週訓練計劃 - Garmin 整合",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve .",
+    "dev": "vercel dev",
+    "build": "echo 'Static site - no build required'"
+  },
+  "keywords": [
+    "wuling",
+    "cycling",
+    "training",
+    "taiwan",
+    "garmin"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@gooin/garmin-connect": "1.6.6"
+  }
+}
