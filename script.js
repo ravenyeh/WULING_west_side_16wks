@@ -821,12 +821,29 @@ function openWorkoutModal(dayIndex) {
                         <span>時間：${day.hours} 小時</span>
                     </div>
 
+                    <div class="workout-download-section">
+                        <h4>下載訓練檔案</h4>
+                        <div class="download-buttons">
+                            <button class="btn-download-format btn-erg" onclick="downloadErg(${dayIndex})">
+                                <span class="format-icon">ERG</span>
+                                <span class="format-desc">Wahoo / Tacx / TrainerRoad</span>
+                            </button>
+                            <button class="btn-download-format btn-zwo" onclick="downloadZwo(${dayIndex})">
+                                <span class="format-icon">ZWO</span>
+                                <span class="format-desc">Zwift</span>
+                            </button>
+                            <button class="btn-download-format btn-json" onclick="downloadJson(${dayIndex})">
+                                <span class="format-icon">JSON</span>
+                                <span class="format-desc">Garmin Connect</span>
+                            </button>
+                        </div>
+                    </div>
+
                     <details class="workout-json-details">
                         <summary>查看 Garmin 訓練 JSON</summary>
                         <textarea class="workout-json" id="workoutJson" readonly rows="12">${workoutJson}</textarea>
                         <div class="json-actions">
                             <button class="btn-copy" onclick="copyJson()">複製 JSON</button>
-                            <button class="btn-download" onclick="downloadJson(${dayIndex})">下載 JSON</button>
                         </div>
                     </details>
                 </div>
@@ -1021,6 +1038,133 @@ function downloadJson(dayIndex) {
     const a = document.createElement('a');
     a.href = url;
     a.download = `wuling_W${day.week}D${day.day}_${day.phase}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+// Generate ERG file content (for Wahoo, Tacx, TrainerRoad, etc.)
+function generateErgFile(day, dayIndex) {
+    const ftpValue = userFTP || 200; // Default FTP if not set
+    const workout = convertToGarminWorkout(day, dayIndex);
+    const steps = workout.workoutSegments[0].workoutSteps;
+
+    let ergContent = '[COURSE HEADER]\n';
+    ergContent += 'VERSION = 2\n';
+    ergContent += 'UNITS = ENGLISH\n';
+    ergContent += `DESCRIPTION = ${day.content}\n`;
+    ergContent += `FILE NAME = wuling_W${day.week}D${day.day}\n`;
+    ergContent += 'MINUTES WATTS\n';
+    ergContent += '[END COURSE HEADER]\n';
+    ergContent += '[COURSE DATA]\n';
+
+    let currentTime = 0; // in minutes
+
+    steps.forEach(step => {
+        const durationMinutes = (step.durationValue || 600) / 60;
+        const powerPercent = getPowerPercentForZone(step.targetValue || 2);
+        const watts = Math.round(ftpValue * powerPercent / 100);
+
+        // Start point
+        ergContent += `${currentTime.toFixed(2)}\t${watts}\n`;
+
+        // End point
+        currentTime += durationMinutes;
+        ergContent += `${currentTime.toFixed(2)}\t${watts}\n`;
+    });
+
+    ergContent += '[END COURSE DATA]\n';
+
+    return ergContent;
+}
+
+// Generate ZWO file content (for Zwift)
+function generateZwoFile(day, dayIndex) {
+    const workout = convertToGarminWorkout(day, dayIndex);
+    const steps = workout.workoutSegments[0].workoutSteps;
+
+    let zwoContent = '<?xml version="1.0" encoding="UTF-8"?>\n';
+    zwoContent += '<workout_file>\n';
+    zwoContent += '    <author>西進武嶺 SUB4 訓練計劃</author>\n';
+    zwoContent += `    <name>${escapeXml(workout.workoutName)}</name>\n`;
+    zwoContent += `    <description>${escapeXml(day.content)}</description>\n`;
+    zwoContent += '    <sportType>bike</sportType>\n';
+    zwoContent += '    <tags>\n';
+    zwoContent += `        <tag name="${day.phase}"/>\n`;
+    zwoContent += `        <tag name="${day.intensity}"/>\n`;
+    zwoContent += '    </tags>\n';
+    zwoContent += '    <workout>\n';
+
+    steps.forEach(step => {
+        const duration = step.durationValue || 600;
+        const powerPercent = getPowerPercentForZone(step.targetValue || 2) / 100;
+
+        if (step.stepType === 'WARMUP') {
+            zwoContent += `        <Warmup Duration="${duration}" PowerLow="0.50" PowerHigh="${powerPercent.toFixed(2)}"/>\n`;
+        } else if (step.stepType === 'COOLDOWN') {
+            zwoContent += `        <Cooldown Duration="${duration}" PowerLow="${powerPercent.toFixed(2)}" PowerHigh="0.50"/>\n`;
+        } else if (step.stepType === 'REST') {
+            zwoContent += `        <SteadyState Duration="${duration}" Power="0.55" Cadence="85"/>\n`;
+        } else {
+            // INTERVAL or other
+            zwoContent += `        <SteadyState Duration="${duration}" Power="${powerPercent.toFixed(2)}"/>\n`;
+        }
+    });
+
+    zwoContent += '    </workout>\n';
+    zwoContent += '</workout_file>\n';
+
+    return zwoContent;
+}
+
+// Helper function to get power percentage for zone
+function getPowerPercentForZone(zone) {
+    const zonePercents = {
+        1: 50,   // Zone 1: Recovery
+        2: 65,   // Zone 2: Endurance
+        3: 82,   // Zone 3: Tempo
+        4: 95,   // Zone 4: Threshold
+        5: 110,  // Zone 5: VO2max
+        6: 130   // Zone 6: Anaerobic
+    };
+    return zonePercents[zone] || 65;
+}
+
+// Helper function to escape XML special characters
+function escapeXml(str) {
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+}
+
+// Download ERG file
+function downloadErg(dayIndex) {
+    const day = trainingData[dayIndex];
+    const ergContent = generateErgFile(day, dayIndex);
+    const blob = new Blob([ergContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `wuling_W${day.week}D${day.day}_${day.phase}.erg`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+// Download ZWO file
+function downloadZwo(dayIndex) {
+    const day = trainingData[dayIndex];
+    const zwoContent = generateZwoFile(day, dayIndex);
+    const blob = new Blob([zwoContent], { type: 'application/xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `wuling_W${day.week}D${day.day}_${day.phase}.zwo`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
