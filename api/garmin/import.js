@@ -84,17 +84,32 @@ module.exports = async (req, res) => {
                     }
                 }
 
-                const workoutId = createdWorkout?.workoutId || createdWorkout?.id;
+                // Extract workoutId from various possible response formats
+                const workoutId = createdWorkout?.workoutId
+                    || createdWorkout?.id
+                    || createdWorkout?.data?.workoutId
+                    || createdWorkout?.data?.id;
+
+                console.log('Created workout response:', JSON.stringify(createdWorkout, null, 2));
+                console.log('Extracted workoutId:', workoutId);
+
                 let scheduled = false;
+                let scheduleError = null;
 
                 // Schedule if date provided
                 if (scheduledDate && workoutId) {
                     try {
-                        await GC.scheduleWorkout({ workoutId }, scheduledDate);
+                        // Format date as YYYY-MM-DD
+                        const dateStr = typeof scheduledDate === 'string'
+                            ? scheduledDate
+                            : scheduledDate.toISOString().split('T')[0];
+
+                        await GC.scheduleWorkout({ workoutId: workoutId }, dateStr);
                         scheduled = true;
                         scheduledCount++;
-                    } catch (scheduleError) {
-                        console.error(`Schedule error for workout ${dayIndex}:`, scheduleError);
+                    } catch (err) {
+                        console.error(`Schedule error for workout ${dayIndex}:`, err);
+                        scheduleError = err.message;
                     }
                 }
 
@@ -104,6 +119,7 @@ module.exports = async (req, res) => {
                     success: true,
                     workoutId,
                     scheduled,
+                    scheduleError: scheduleError,
                     scheduledDate: scheduledDate || null,
                     workoutName: workout.workoutName
                 });
