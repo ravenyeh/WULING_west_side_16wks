@@ -884,15 +884,24 @@ function convertToGarminWorkout(day, dayIndex) {
     const dateStr = trainingDate ? formatDate(trainingDate) : `Week ${day.week} Day ${day.day}`;
 
     const workout = {
+        workoutId: null,
+        ownerId: null,
         workoutName: `西進武嶺 W${day.week}D${day.day} - ${day.phase}`,
         description: `${day.content}\n\n距離：${day.distance}km | 爬升：${day.elevation}m | 時間：${day.hours}h`,
-        sport: 'CYCLING',
-        subSport: 'ROAD',
+        sportType: {
+            sportTypeId: 2,
+            sportTypeKey: "cycling"
+        },
         workoutSegments: [{
             segmentOrder: 1,
-            sportType: 'CYCLING',
+            sportType: {
+                sportTypeId: 2,
+                sportTypeKey: "cycling"
+            },
             workoutSteps: generateBikeSteps(day)
-        }]
+        }],
+        estimatedDurationInSecs: Math.round(day.hours * 3600),
+        estimatedDistanceInMeters: day.distance * 1000
     };
 
     return workout;
@@ -901,113 +910,79 @@ function convertToGarminWorkout(day, dayIndex) {
 // Generate bike workout steps
 function generateBikeSteps(day) {
     const steps = [];
+    let stepId = 1;
     let stepOrder = 1;
 
-    // Warmup
-    steps.push({
-        stepOrder: stepOrder++,
-        stepType: 'WARMUP',
-        childStepId: null,
-        description: '暖身',
-        durationType: 'TIME',
-        durationValue: 600, // 10 minutes in seconds
-        targetType: 'POWER_ZONE',
-        targetValue: 2, // Zone 2
-        targetValueLow: null,
-        targetValueHigh: null
-    });
+    // Helper function to create a step
+    function createStep(stepTypeId, stepTypeKey, durationSeconds, targetZone) {
+        return {
+            type: "ExecutableStepDTO",
+            stepId: stepId++,
+            stepOrder: stepOrder++,
+            childStepId: null,
+            stepType: {
+                stepTypeId: stepTypeId,
+                stepTypeKey: stepTypeKey
+            },
+            targetType: targetZone ? {
+                workoutTargetTypeId: 6,
+                workoutTargetTypeKey: "power.zone"
+            } : {
+                workoutTargetTypeId: 1,
+                workoutTargetTypeKey: "no.target"
+            },
+            targetValueOne: targetZone || null,
+            targetValueTwo: null,
+            endCondition: {
+                conditionTypeId: 2,
+                conditionTypeKey: "time"
+            },
+            endConditionValue: durationSeconds
+        };
+    }
+
+    // Warmup - 10 minutes (no target)
+    steps.push(createStep(1, "warmup", 600, null));
 
     // Main set based on intensity
     if (day.intensity === '輕鬆') {
-        steps.push({
-            stepOrder: stepOrder++,
-            stepType: 'INTERVAL',
-            description: 'Zone 2 有氧騎乘',
-            durationType: 'TIME',
-            durationValue: (day.hours - 0.5) * 3600,
-            targetType: 'POWER_ZONE',
-            targetValue: 2
-        });
+        // Zone 2 steady ride
+        const mainDuration = Math.max(600, (day.hours - 0.33) * 3600);
+        steps.push(createStep(3, "interval", mainDuration, 2));
     } else if (day.intensity === '中等') {
-        steps.push({
-            stepOrder: stepOrder++,
-            stepType: 'INTERVAL',
-            description: 'Zone 2-3 節奏騎乘',
-            durationType: 'TIME',
-            durationValue: (day.hours - 0.5) * 3600,
-            targetType: 'POWER_ZONE',
-            targetValue: 3
-        });
+        // Zone 2-3 tempo ride
+        const mainDuration = Math.max(600, (day.hours - 0.33) * 3600);
+        steps.push(createStep(3, "interval", mainDuration, 3));
     } else if (day.intensity === '高強度') {
-        // Interval set
+        // Threshold intervals: 4x20min @ Zone 4
         const intervalCount = 4;
         const intervalDuration = 1200; // 20 min
         const restDuration = 300; // 5 min
 
         for (let i = 0; i < intervalCount; i++) {
-            steps.push({
-                stepOrder: stepOrder++,
-                stepType: 'INTERVAL',
-                description: `間歇 ${i + 1}/${intervalCount}`,
-                durationType: 'TIME',
-                durationValue: intervalDuration,
-                targetType: 'POWER_ZONE',
-                targetValue: 4 // Zone 4 (Threshold)
-            });
+            steps.push(createStep(3, "interval", intervalDuration, 4));
 
             if (i < intervalCount - 1) {
-                steps.push({
-                    stepOrder: stepOrder++,
-                    stepType: 'REST',
-                    description: '恢復',
-                    durationType: 'TIME',
-                    durationValue: restDuration,
-                    targetType: 'POWER_ZONE',
-                    targetValue: 1
-                });
+                steps.push(createStep(4, "rest", restDuration, null));
             }
         }
     } else if (day.intensity === '最大') {
-        // High intensity intervals
+        // VO2max intervals: 5x6min @ Zone 5
         const intervalCount = 5;
         const intervalDuration = 360; // 6 min
         const restDuration = 300; // 5 min
 
         for (let i = 0; i < intervalCount; i++) {
-            steps.push({
-                stepOrder: stepOrder++,
-                stepType: 'INTERVAL',
-                description: `最大強度 ${i + 1}/${intervalCount}`,
-                durationType: 'TIME',
-                durationValue: intervalDuration,
-                targetType: 'POWER_ZONE',
-                targetValue: 5 // Zone 5 (VO2max)
-            });
+            steps.push(createStep(3, "interval", intervalDuration, 5));
 
             if (i < intervalCount - 1) {
-                steps.push({
-                    stepOrder: stepOrder++,
-                    stepType: 'REST',
-                    description: '恢復',
-                    durationType: 'TIME',
-                    durationValue: restDuration,
-                    targetType: 'POWER_ZONE',
-                    targetValue: 1
-                });
+                steps.push(createStep(4, "rest", restDuration, null));
             }
         }
     }
 
-    // Cooldown
-    steps.push({
-        stepOrder: stepOrder++,
-        stepType: 'COOLDOWN',
-        description: '緩和',
-        durationType: 'TIME',
-        durationValue: 600, // 10 minutes
-        targetType: 'POWER_ZONE',
-        targetValue: 1
-    });
+    // Cooldown - 10 minutes (no target)
+    steps.push(createStep(2, "cooldown", 600, null));
 
     return steps;
 }
