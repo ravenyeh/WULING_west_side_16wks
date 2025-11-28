@@ -1,5 +1,6 @@
 const { GarminConnect } = require('@gooin/garmin-connect');
 
+// Combined login + import endpoint for Vercel serverless
 module.exports = async (req, res) => {
     // Enable CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -20,141 +21,129 @@ module.exports = async (req, res) => {
         if (!email || !password) {
             return res.status(400).json({
                 success: false,
-                error: '請提供 Garmin 帳號和密碼'
+                error: '請提供 Email 和密碼'
             });
         }
 
         if (!workouts || !Array.isArray(workouts) || workouts.length === 0) {
             return res.status(400).json({
                 success: false,
-                error: '請提供要匯入的訓練'
+                error: '請提供訓練資料'
             });
         }
 
-        // Create and authenticate Garmin Connect instance
+        // Initialize and login
         const GC = new GarminConnect({
             username: email,
             password: password
         });
 
-        try {
-            await GC.login();
-        } catch (loginError) {
-            let errorMessage = '登入失敗';
+        await GC.login();
 
-            if (loginError.message?.includes('credentials')) {
-                errorMessage = '帳號或密碼錯誤';
-            } else if (loginError.message?.includes('captcha') || loginError.message?.includes('CAPTCHA')) {
-                errorMessage = 'Garmin 要求驗證碼，請先在瀏覽器登入 Garmin Connect 網站後再試';
-            } else if (loginError.message?.includes('blocked') || loginError.message?.includes('429')) {
-                errorMessage = '請求過於頻繁，請稍後再試';
-            }
-
-            return res.status(401).json({
-                success: false,
-                error: errorMessage
-            });
-        }
-
-        // Process workouts
+        // Import each workout
         const results = [];
-        let successCount = 0;
-        let failCount = 0;
-        let scheduledCount = 0;
-
         for (const workoutData of workouts) {
-            const { workout, scheduledDate, dayIndex } = workoutData;
-
             try {
-                let createdWorkout;
+                const { workout, scheduledDate } = workoutData;
 
-                // Try primary method
+                // Create workout
+                let createdWorkout;
                 try {
                     createdWorkout = await GC.addWorkout(workout);
-                } catch (primaryError) {
-                    // Fallback method
-                    try {
+                } catch (e) {
+                    // Try alternative method if addWorkout doesn't exist
+                    console.log('addWorkout failed, trying alternative:', e.message);
+
+                    if (GC.client && GC.client.post) {
                         const response = await GC.client.post(
                             'https://connect.garmin.com/workout-service/workout',
-                            workout
+                            { ...workout, workoutId: null, ownerId: null }
                         );
-                        createdWorkout = response.data || response;
-                    } catch (fallbackError) {
-                        throw primaryError;
+                        createdWorkout = response.data;
+                    } else {
+                        throw e;
                     }
                 }
 
-                // Extract workoutId from various possible response formats
-                const workoutId = createdWorkout?.workoutId
-                    || createdWorkout?.id
-                    || createdWorkout?.data?.workoutId
-                    || createdWorkout?.data?.id;
-
-                console.log('Created workout response:', JSON.stringify(createdWorkout, null, 2));
-                console.log('Extracted workoutId:', workoutId);
-
+                // Schedule if date provided - use correct scheduleWorkout format
                 let scheduled = false;
-                let scheduleError = null;
-
-                // Schedule if date provided
-                if (scheduledDate && workoutId) {
+                if (scheduledDate && createdWorkout && createdWorkout.workoutId) {
                     try {
-                        // Format date as YYYY-MM-DD
-                        const dateStr = typeof scheduledDate === 'string'
-                            ? scheduledDate
-                            : scheduledDate.toISOString().split('T')[0];
+                        console.log('Scheduling workout:', createdWorkout.workoutId, 'to date:', scheduledDate);
 
-                        await GC.scheduleWorkout({ workoutId: workoutId }, dateStr);
-                        scheduled = true;
-                        scheduledCount++;
-                    } catch (err) {
-                        console.error(`Schedule error for workout ${dayIndex}:`, err);
-                        scheduleError = err.message;
+                        // Correct format: first param is object with workoutId, second is Date object
+                        if (typeof GC.scheduleWorkout === 'function') {
+                            await GC.scheduleWorkout(
+                                { workoutId: createdWorkout.workoutId },
+                                new Date(scheduledDate)
+                            );
+                            scheduled = true;
+                            console.log('Workout scheduled successfully');
+                        } else {
+                            console.log('scheduleWorkout method not available');
+                        }
+                    } catch (e) {
+                        console.log('Schedule failed:', e.message);
                     }
                 }
 
-                successCount++;
                 results.push({
-                    dayIndex,
                     success: true,
-                    workoutId,
-                    scheduled,
-                    scheduleError: scheduleError,
+                    workoutName: workout.workoutName,
+                    workoutId: createdWorkout?.workoutId,
                     scheduledDate: scheduledDate || null,
-                    workoutName: workout.workoutName
+                    scheduled: scheduled
                 });
-
-            } catch (workoutError) {
-                failCount++;
+            } catch (e) {
                 results.push({
-                    dayIndex,
                     success: false,
-                    error: workoutError.message,
-                    workoutName: workout?.workoutName
+                    workoutName: workoutData.workout?.workoutName || 'Unknown',
+                    error: e.message
                 });
             }
+        }
 
-            // Add small delay between requests to avoid rate limiting
-            await new Promise(resolve => setTimeout(resolve, 500));
+        const successCount = results.filter(r => r.success).length;
+        const scheduledCount = results.filter(r => r.success && r.scheduled).length;
+
+        let message = `成功匯入 ${successCount}/${workouts.length} 個訓練`;
+        if (scheduledCount > 0) {
+            message += `，${scheduledCount} 個已排程`;
+        } else if (successCount > 0) {
+            message += '（排程功能暫不可用）';
         }
 
         return res.status(200).json({
-            success: true,
-            message: `匯入完成：${successCount} 成功，${failCount} 失敗，${scheduledCount} 已排程`,
+            success: successCount > 0,
+            message: message,
+            results: results,
             summary: {
                 total: workouts.length,
-                success: successCount,
-                failed: failCount,
+                imported: successCount,
                 scheduled: scheduledCount
-            },
-            results
+            }
         });
 
     } catch (error) {
-        console.error('Import error:', error);
-        return res.status(500).json({
+        console.error('Garmin import error:', error.message);
+
+        let errorMessage = '匯入失敗';
+
+        if (error.message) {
+            const msg = error.message.toLowerCase();
+            if (msg.includes('credentials') || msg.includes('password') || msg.includes('401')) {
+                errorMessage = 'Email 或密碼錯誤';
+            } else if (msg.includes('captcha') || msg.includes('robot')) {
+                errorMessage = 'Garmin 需要驗證碼，請使用手動匯入方式';
+            } else if (msg.includes('blocked') || msg.includes('forbidden')) {
+                errorMessage = 'Garmin 暫時封鎖此連線，請使用手動匯入';
+            }
+        }
+
+        return res.status(401).json({
             success: false,
-            error: error.message || '匯入失敗'
+            error: errorMessage,
+            detail: 'Garmin Connect API 失敗，建議使用「複製 JSON」或「下載 .json」功能手動匯入'
         });
     }
 };
