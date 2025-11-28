@@ -913,32 +913,73 @@ function generateBikeSteps(day) {
     let stepId = 1;
     let stepOrder = 1;
 
-    // Helper function to create a step
-    function createStep(stepTypeId, stepTypeKey, durationSeconds, targetZone) {
-        return {
+    // Power target presets (% FTP ranges)
+    const powerTargets = {
+        zone1: { low: 0, high: 55, name: 'Recovery' },
+        zone2: { low: 55, high: 75, name: 'Endurance' },
+        zone3: { low: 75, high: 90, name: 'Tempo' },
+        sweetSpot: { low: 88, high: 94, name: 'Sweet Spot' },
+        zone4: { low: 90, high: 105, name: 'Threshold' },
+        threshold: { low: 95, high: 105, name: 'FTP' },
+        zone5: { low: 105, high: 120, name: 'VO2max' },
+        zone6: { low: 120, high: 150, name: 'Anaerobic' }
+    };
+
+    // Helper function to create a step with power target
+    function createStep(stepTypeId, stepTypeKey, durationSeconds, powerTarget, description) {
+        const step = {
             type: "ExecutableStepDTO",
             stepId: stepId++,
             stepOrder: stepOrder++,
             childStepId: null,
+            description: description || null,
             stepType: {
                 stepTypeId: stepTypeId,
                 stepTypeKey: stepTypeKey
             },
-            targetType: targetZone ? {
-                workoutTargetTypeId: 6,
-                workoutTargetTypeKey: "power.zone"
-            } : {
-                workoutTargetTypeId: 1,
-                workoutTargetTypeKey: "no.target"
-            },
-            targetValueOne: targetZone || null,
-            targetValueTwo: null,
             endCondition: {
                 conditionTypeId: 2,
                 conditionTypeKey: "time"
             },
             endConditionValue: durationSeconds
         };
+
+        if (powerTarget && userFTP) {
+            // Use custom power target with actual watts
+            const lowWatts = Math.round(userFTP * powerTarget.low / 100);
+            const highWatts = Math.round(userFTP * powerTarget.high / 100);
+            step.targetType = {
+                workoutTargetTypeId: 2,
+                workoutTargetTypeKey: "power"
+            };
+            step.targetValueOne = lowWatts;
+            step.targetValueTwo = highWatts;
+        } else if (powerTarget) {
+            // No FTP set, use power zone
+            let zoneNumber = 3;
+            if (powerTarget.low >= 105) zoneNumber = 5;
+            else if (powerTarget.low >= 88) zoneNumber = 4;
+            else if (powerTarget.low >= 75) zoneNumber = 3;
+            else if (powerTarget.low >= 55) zoneNumber = 2;
+            else zoneNumber = 1;
+
+            step.targetType = {
+                workoutTargetTypeId: 6,
+                workoutTargetTypeKey: "power.zone"
+            };
+            step.targetValueOne = zoneNumber;
+            step.targetValueTwo = null;
+        } else {
+            // No target
+            step.targetType = {
+                workoutTargetTypeId: 1,
+                workoutTargetTypeKey: "no.target"
+            };
+            step.targetValueOne = null;
+            step.targetValueTwo = null;
+        }
+
+        return step;
     }
 
     // Parse content for interval patterns
@@ -947,22 +988,32 @@ function generateBikeSteps(day) {
     // Match patterns like "2x20min", "3x15min", "5x6min", "4x5min", etc.
     const intervalMatch = content.match(/(\d+)x(\d+)\s*min/i);
 
-    // Detect workout type and target zone
-    let targetZone = 3; // Default zone 3
-    if (content.includes('Sweet Spot') || content.includes('88-94%') || content.includes('90%')) {
-        targetZone = 4; // Sweet Spot = Zone 4
-    } else if (content.includes('FTP') || content.includes('閾值') || content.includes('Threshold') || content.includes('95-105%')) {
-        targetZone = 4; // Threshold = Zone 4
+    // Detect workout type and get power target
+    let mainTarget = powerTargets.zone3; // Default tempo
+    let description = '';
+
+    if (content.includes('Sweet Spot') || content.includes('88-94%')) {
+        mainTarget = powerTargets.sweetSpot;
+        description = 'Sweet Spot @ 88-94% FTP';
+    } else if (content.includes('閾值') || content.includes('Threshold') || content.match(/@ ?FTP/)) {
+        mainTarget = powerTargets.threshold;
+        description = 'Threshold @ 95-105% FTP';
     } else if (content.includes('VO2max') || content.includes('110%') || content.includes('105-120%')) {
-        targetZone = 5; // VO2max = Zone 5
-    } else if (content.includes('Zone 2') || content.includes('有氧') || content.includes('恢復')) {
-        targetZone = 2; // Endurance = Zone 2
-    } else if (content.includes('節奏') || content.includes('Tempo') || content.includes('75-90%')) {
-        targetZone = 3; // Tempo = Zone 3
+        mainTarget = powerTargets.zone5;
+        description = 'VO2max @ 105-120% FTP';
+    } else if (content.includes('Zone 2') || content.includes('有氧') || content.includes('恢復騎')) {
+        mainTarget = powerTargets.zone2;
+        description = 'Zone 2 Endurance @ 55-75% FTP';
+    } else if (content.includes('節奏') || content.includes('Tempo') || content.includes('75-90%') || content.includes('75%')) {
+        mainTarget = powerTargets.zone3;
+        description = 'Tempo @ 75-90% FTP';
+    } else if (content.includes('爬坡') || content.includes('坡度')) {
+        mainTarget = powerTargets.zone4;
+        description = 'Climbing @ 90-105% FTP';
     }
 
-    // Warmup - 10 minutes (no target)
-    steps.push(createStep(1, "warmup", 600, null));
+    // Warmup - 10 minutes @ Zone 2
+    steps.push(createStep(1, "warmup", 600, powerTargets.zone2, '暖身 Warmup'));
 
     if (intervalMatch) {
         // Structured intervals detected
@@ -971,41 +1022,41 @@ function generateBikeSteps(day) {
         const restDuration = 300; // 5 min rest between intervals
 
         for (let i = 0; i < intervalCount; i++) {
-            steps.push(createStep(3, "interval", intervalDuration, targetZone));
+            steps.push(createStep(3, "interval", intervalDuration, mainTarget, `${description} (${i + 1}/${intervalCount})`));
 
             if (i < intervalCount - 1) {
-                steps.push(createStep(4, "rest", restDuration, null));
+                steps.push(createStep(4, "rest", restDuration, powerTargets.zone1, '恢復 Recovery'));
             }
         }
     } else {
         // No interval pattern - use intensity-based approach
         if (day.intensity === '輕鬆') {
             const mainDuration = Math.max(600, (day.hours - 0.33) * 3600);
-            steps.push(createStep(3, "interval", mainDuration, 2));
+            steps.push(createStep(3, "interval", mainDuration, powerTargets.zone2, 'Zone 2 有氧騎乘'));
         } else if (day.intensity === '中等') {
             const mainDuration = Math.max(600, (day.hours - 0.33) * 3600);
-            steps.push(createStep(3, "interval", mainDuration, targetZone));
+            steps.push(createStep(3, "interval", mainDuration, mainTarget, description || 'Tempo 騎乘'));
         } else if (day.intensity === '高強度') {
-            // Default high intensity: 4x10min @ Zone 4
+            // Default high intensity: 4x10min @ Threshold
             for (let i = 0; i < 4; i++) {
-                steps.push(createStep(3, "interval", 600, 4));
+                steps.push(createStep(3, "interval", 600, powerTargets.threshold, `Threshold (${i + 1}/4)`));
                 if (i < 3) {
-                    steps.push(createStep(4, "rest", 300, null));
+                    steps.push(createStep(4, "rest", 300, powerTargets.zone1, '恢復'));
                 }
             }
         } else if (day.intensity === '最大') {
-            // Default max intensity: 5x5min @ Zone 5
+            // Default max intensity: 5x5min @ VO2max
             for (let i = 0; i < 5; i++) {
-                steps.push(createStep(3, "interval", 300, 5));
+                steps.push(createStep(3, "interval", 300, powerTargets.zone5, `VO2max (${i + 1}/5)`));
                 if (i < 4) {
-                    steps.push(createStep(4, "rest", 300, null));
+                    steps.push(createStep(4, "rest", 300, powerTargets.zone1, '恢復'));
                 }
             }
         }
     }
 
-    // Cooldown - 10 minutes (no target)
-    steps.push(createStep(2, "cooldown", 600, null));
+    // Cooldown - 10 minutes @ Zone 1
+    steps.push(createStep(2, "cooldown", 600, powerTargets.zone1, '緩和 Cooldown'));
 
     return steps;
 }
