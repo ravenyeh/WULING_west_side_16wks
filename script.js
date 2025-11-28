@@ -925,7 +925,7 @@ function generateBikeSteps(day) {
                 stepTypeKey: stepTypeKey
             },
             targetType: targetZone ? {
-                workoutTargetTypeId: 2,
+                workoutTargetTypeId: 6,
                 workoutTargetTypeKey: "power.zone"
             } : {
                 workoutTargetTypeId: 1,
@@ -941,8 +941,8 @@ function generateBikeSteps(day) {
         };
     }
 
-    // Warmup - 10 minutes
-    steps.push(createStep(1, "warmup", 600, 2));
+    // Warmup - 10 minutes (no target)
+    steps.push(createStep(1, "warmup", 600, null));
 
     // Main set based on intensity
     if (day.intensity === '輕鬆') {
@@ -963,7 +963,7 @@ function generateBikeSteps(day) {
             steps.push(createStep(3, "interval", intervalDuration, 4));
 
             if (i < intervalCount - 1) {
-                steps.push(createStep(4, "recovery", restDuration, 1));
+                steps.push(createStep(4, "rest", restDuration, null));
             }
         }
     } else if (day.intensity === '最大') {
@@ -976,13 +976,13 @@ function generateBikeSteps(day) {
             steps.push(createStep(3, "interval", intervalDuration, 5));
 
             if (i < intervalCount - 1) {
-                steps.push(createStep(4, "recovery", restDuration, 1));
+                steps.push(createStep(4, "rest", restDuration, null));
             }
         }
     }
 
-    // Cooldown - 10 minutes
-    steps.push(createStep(2, "cooldown", 600, 1));
+    // Cooldown - 10 minutes (no target)
+    steps.push(createStep(2, "cooldown", 600, null));
 
     return steps;
 }
