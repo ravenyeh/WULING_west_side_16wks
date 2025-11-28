@@ -1,4 +1,4 @@
-const GarminConnect = require('@gooin/garmin-connect').default;
+const { GarminConnect } = require('@gooin/garmin-connect');
 
 // In-memory session storage (for demo - production should use Redis/DB)
 const sessions = new Map();
