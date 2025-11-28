@@ -941,42 +941,65 @@ function generateBikeSteps(day) {
         };
     }
 
+    // Parse content for interval patterns
+    const content = day.content;
+
+    // Match patterns like "2x20min", "3x15min", "5x6min", "4x5min", etc.
+    const intervalMatch = content.match(/(\d+)x(\d+)\s*min/i);
+
+    // Detect workout type and target zone
+    let targetZone = 3; // Default zone 3
+    if (content.includes('Sweet Spot') || content.includes('88-94%') || content.includes('90%')) {
+        targetZone = 4; // Sweet Spot = Zone 4
+    } else if (content.includes('FTP') || content.includes('閾值') || content.includes('Threshold') || content.includes('95-105%')) {
+        targetZone = 4; // Threshold = Zone 4
+    } else if (content.includes('VO2max') || content.includes('110%') || content.includes('105-120%')) {
+        targetZone = 5; // VO2max = Zone 5
+    } else if (content.includes('Zone 2') || content.includes('有氧') || content.includes('恢復')) {
+        targetZone = 2; // Endurance = Zone 2
+    } else if (content.includes('節奏') || content.includes('Tempo') || content.includes('75-90%')) {
+        targetZone = 3; // Tempo = Zone 3
+    }
+
     // Warmup - 10 minutes (no target)
     steps.push(createStep(1, "warmup", 600, null));
 
-    // Main set based on intensity
-    if (day.intensity === '輕鬆') {
-        // Zone 2 steady ride
-        const mainDuration = Math.max(600, (day.hours - 0.33) * 3600);
-        steps.push(createStep(3, "interval", mainDuration, 2));
-    } else if (day.intensity === '中等') {
-        // Zone 2-3 tempo ride
-        const mainDuration = Math.max(600, (day.hours - 0.33) * 3600);
-        steps.push(createStep(3, "interval", mainDuration, 3));
-    } else if (day.intensity === '高強度') {
-        // Threshold intervals: 4x20min @ Zone 4
-        const intervalCount = 4;
-        const intervalDuration = 1200; // 20 min
-        const restDuration = 300; // 5 min
+    if (intervalMatch) {
+        // Structured intervals detected
+        const intervalCount = parseInt(intervalMatch[1]);
+        const intervalDuration = parseInt(intervalMatch[2]) * 60; // Convert to seconds
+        const restDuration = 300; // 5 min rest between intervals
 
         for (let i = 0; i < intervalCount; i++) {
-            steps.push(createStep(3, "interval", intervalDuration, 4));
+            steps.push(createStep(3, "interval", intervalDuration, targetZone));
 
             if (i < intervalCount - 1) {
                 steps.push(createStep(4, "rest", restDuration, null));
             }
         }
-    } else if (day.intensity === '最大') {
-        // VO2max intervals: 5x6min @ Zone 5
-        const intervalCount = 5;
-        const intervalDuration = 360; // 6 min
-        const restDuration = 300; // 5 min
-
-        for (let i = 0; i < intervalCount; i++) {
-            steps.push(createStep(3, "interval", intervalDuration, 5));
-
-            if (i < intervalCount - 1) {
-                steps.push(createStep(4, "rest", restDuration, null));
+    } else {
+        // No interval pattern - use intensity-based approach
+        if (day.intensity === '輕鬆') {
+            const mainDuration = Math.max(600, (day.hours - 0.33) * 3600);
+            steps.push(createStep(3, "interval", mainDuration, 2));
+        } else if (day.intensity === '中等') {
+            const mainDuration = Math.max(600, (day.hours - 0.33) * 3600);
+            steps.push(createStep(3, "interval", mainDuration, targetZone));
+        } else if (day.intensity === '高強度') {
+            // Default high intensity: 4x10min @ Zone 4
+            for (let i = 0; i < 4; i++) {
+                steps.push(createStep(3, "interval", 600, 4));
+                if (i < 3) {
+                    steps.push(createStep(4, "rest", 300, null));
+                }
+            }
+        } else if (day.intensity === '最大') {
+            // Default max intensity: 5x5min @ Zone 5
+            for (let i = 0; i < 5; i++) {
+                steps.push(createStep(3, "interval", 300, 5));
+                if (i < 4) {
+                    steps.push(createStep(4, "rest", 300, null));
+                }
             }
         }
     }
