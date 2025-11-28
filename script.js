@@ -1140,6 +1140,8 @@ function openWorkoutModal(dayIndex) {
                         <span>時間：${day.hours} 小時</span>
                     </div>
 
+                    ${renderWorkoutStepsPreview(workout)}
+
                     <div class="workout-download-section">
                         <h4>下載訓練檔案</h4>
                         <div class="download-buttons">
@@ -1190,6 +1192,111 @@ function openWorkoutModal(dayIndex) {
     `;
 
     modal.classList.add('show');
+}
+
+// Render Garmin-style workout steps preview
+function renderWorkoutStepsPreview(workoutData) {
+    if (!workoutData.workoutSegments || workoutData.workoutSegments.length === 0) {
+        return '';
+    }
+
+    let html = '<div class="steps-preview"><div class="steps-header">訓練步驟 Steps</div>';
+
+    workoutData.workoutSegments.forEach(segment => {
+        if (segment.workoutSteps) {
+            segment.workoutSteps.forEach(step => {
+                html += renderStepItem(step);
+            });
+        }
+    });
+
+    html += '</div>';
+    return html;
+}
+
+// Render a single step item (handles both regular steps and repeat groups)
+function renderStepItem(step) {
+    const stepType = step.stepType?.stepTypeKey || 'interval';
+
+    // Handle repeat groups
+    if (stepType === 'repeat' && step.workoutSteps) {
+        let html = `<div class="step-repeat-group">
+            <div class="repeat-header">
+                <span class="repeat-times">${step.numberOfIterations || 2}x</span>
+                <span class="repeat-description">重複組</span>
+            </div>
+            <div class="repeat-steps">`;
+
+        step.workoutSteps.forEach(subStep => {
+            html += renderSingleStep(subStep);
+        });
+
+        html += '</div></div>';
+        return html;
+    }
+
+    return renderSingleStep(step);
+}
+
+// Render a single executable step
+function renderSingleStep(step) {
+    const stepType = step.stepType?.stepTypeKey || 'interval';
+    const stepColors = {
+        'warmup': '#E2001A',
+        'interval': '#007AFF',
+        'recovery': '#8E8E93',
+        'rest': '#8E8E93',
+        'cooldown': '#34C759'
+    };
+    const stepLabels = {
+        'warmup': '暖身 Warm Up',
+        'interval': '主課表 Interval',
+        'recovery': '恢復 Recover',
+        'rest': '休息 Rest',
+        'cooldown': '緩和 Cool Down'
+    };
+
+    const color = stepColors[stepType] || '#007AFF';
+    const label = stepLabels[stepType] || 'Interval';
+
+    // Format duration
+    let durationText = '';
+    const endCondition = step.endCondition?.conditionTypeKey;
+    if (endCondition === 'time') {
+        const secs = step.endConditionValue || 0;
+        const mins = Math.floor(secs / 60);
+        const remainingSecs = secs % 60;
+        durationText = remainingSecs > 0 ? `${mins}:${String(remainingSecs).padStart(2, '0')}` : `${mins}:00`;
+    } else if (endCondition === 'distance') {
+        const meters = step.endConditionValue || 0;
+        durationText = meters >= 1000 ? `${(meters / 1000).toFixed(1)} km` : `${meters} m`;
+    } else if (endCondition === 'lap.button') {
+        durationText = '按下計圈鍵';
+    }
+
+    // Format target (power)
+    let targetText = '';
+    const targetType = step.targetType?.workoutTargetTypeKey;
+    if (targetType === 'power' && step.targetValueOne && step.targetValueTwo) {
+        targetText = `功率目標 · ${Math.round(step.targetValueOne)}-${Math.round(step.targetValueTwo)} W`;
+    } else if (targetType === 'power.zone' && step.targetValueOne) {
+        targetText = `功率區間 · Zone ${step.targetValueOne}`;
+    }
+
+    // Description
+    let descriptionText = step.description || '';
+
+    return `
+        <div class="step-item step-type-${stepType}">
+            <div class="step-color-bar" style="background-color: ${color}"></div>
+            <div class="step-content">
+                <div class="step-label">${label}</div>
+                ${descriptionText ? `<div class="step-description">${descriptionText}</div>` : ''}
+                <div class="step-duration">${durationText}</div>
+                ${targetText ? `<div class="step-target">${targetText}</div>` : ''}
+            </div>
+        </div>
+    `;
 }
 
 // Close modal
