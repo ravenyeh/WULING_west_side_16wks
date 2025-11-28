@@ -32,10 +32,13 @@ module.exports = async (req, res) => {
         }
 
         // Create and authenticate Garmin Connect instance
-        const GC = new GarminConnect();
+        const GC = new GarminConnect({
+            username: email,
+            password: password
+        });
 
         try {
-            await GC.login(email, password);
+            await GC.login();
         } catch (loginError) {
             let errorMessage = '登入失敗';
 

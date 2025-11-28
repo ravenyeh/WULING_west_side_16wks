@@ -27,11 +27,14 @@ module.exports = async (req, res) => {
             });
         }
 
-        // Create new Garmin Connect instance
-        const GC = new GarminConnect();
+        // Create new Garmin Connect instance with credentials
+        const GC = new GarminConnect({
+            username: email,
+            password: password
+        });
 
         // Attempt login
-        await GC.login(email, password);
+        await GC.login();
 
         // Get user profile
         const userProfile = await GC.getUserProfile();
