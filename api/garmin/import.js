@@ -1,4 +1,4 @@
-const GarminConnect = require('@gooin/garmin-connect').default;
+const { GarminConnect } = require('@gooin/garmin-connect');
 
 module.exports = async (req, res) => {
     // Enable CORS
