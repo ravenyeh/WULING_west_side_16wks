@@ -962,19 +962,19 @@ function displayTodayTraining() {
         if (today < firstTrainingDate) {
             todayLabel.textContent = '訓練尚未開始';
             todayNote.textContent = `訓練將於 ${formatDate(firstTrainingDate)} 開始`;
-            const previewDay = trainingData[0];
-            displayTrainingDay(previewDay, 0);
-            // Show button to preview first day workout
-            if (previewDay.intensity !== '休息') {
-                todayActions.innerHTML = `
-                    <button class="btn-today-workout" onclick="openWorkoutModal(0)">
-                        <span class="btn-icon">🚴</span>
-                        查看訓練
-                    </button>
-                `;
-            } else {
-                todayActions.innerHTML = '';
-            }
+            // Pick a random non-rest day from 建構期
+            const buildPhaseDays = trainingData
+                .map((day, index) => ({ ...day, index }))
+                .filter(day => day.phase === '建構期' && day.intensity !== '休息');
+            const randomDay = buildPhaseDays[Math.floor(Math.random() * buildPhaseDays.length)];
+            displayTrainingDay(randomDay, randomDay.index);
+            // Show button to preview workout (use special preview mode)
+            todayActions.innerHTML = `
+                <button class="btn-today-workout" onclick="openWorkoutModal(${randomDay.index}, true)">
+                    <span class="btn-icon">🚴</span>
+                    查看訓練
+                </button>
+            `;
         } else if (today > lastTrainingDate) {
             todayLabel.textContent = '訓練已結束';
             todayNote.textContent = '恭喜完成訓練計劃！';
@@ -1142,9 +1142,13 @@ function createWeeklyChart() {
 }
 
 // Open workout modal
-function openWorkoutModal(dayIndex) {
+// Track preview mode for import date handling
+let currentPreviewMode = false;
+
+function openWorkoutModal(dayIndex, previewMode = false) {
+    currentPreviewMode = previewMode;
     const day = trainingData[dayIndex];
-    const trainingDate = getTrainingDate(dayIndex + 1);
+    const trainingDate = previewMode ? new Date() : getTrainingDate(dayIndex + 1);
     const modal = document.getElementById('workoutModal');
     const modalContent = document.getElementById('workoutModalContent');
 
@@ -1740,7 +1744,8 @@ async function importToGarmin(dayIndex) {
 
     const day = trainingData[dayIndex];
     const workout = convertToGarminWorkout(day, dayIndex);
-    const trainingDate = getTrainingDate(dayIndex + 1);
+    // Use today's date when in preview mode, otherwise use scheduled training date
+    const trainingDate = currentPreviewMode ? new Date() : getTrainingDate(dayIndex + 1);
 
     statusDiv.textContent = '正在匯入...';
     statusDiv.className = 'garmin-status';
