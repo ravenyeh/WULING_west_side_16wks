@@ -964,16 +964,70 @@ function displayTodayTraining() {
             todayNote.textContent = `訓練將於 ${formatDate(firstTrainingDate)} 開始`;
             const previewDay = trainingData[0];
             displayTrainingDay(previewDay, 0);
+            // Show button to preview first day workout
+            if (previewDay.intensity !== '休息') {
+                todayActions.innerHTML = `
+                    <button class="btn-today-workout" onclick="openWorkoutModal(0)">
+                        <span class="btn-icon">🚴</span>
+                        查看訓練
+                    </button>
+                `;
+            } else {
+                todayActions.innerHTML = '';
+            }
         } else if (today > lastTrainingDate) {
             todayLabel.textContent = '訓練已結束';
             todayNote.textContent = '恭喜完成訓練計劃！';
-            const previewDay = trainingData[trainingData.length - 1];
-            displayTrainingDay(previewDay, trainingData.length - 1);
+            const lastIndex = trainingData.length - 1;
+            const previewDay = trainingData[lastIndex];
+            displayTrainingDay(previewDay, lastIndex);
+            // Show button to review last workout
+            if (previewDay.intensity !== '休息') {
+                todayActions.innerHTML = `
+                    <button class="btn-today-workout" onclick="openWorkoutModal(${lastIndex})">
+                        <span class="btn-icon">🚴</span>
+                        查看訓練
+                    </button>
+                `;
+            } else {
+                todayActions.innerHTML = '';
+            }
         } else {
-            todayLabel.textContent = '休息日';
-            todayNote.textContent = '好好休息，為下次訓練做準備';
+            // Find the next upcoming training day
+            let nextDayIndex = -1;
+            for (let i = 0; i < trainingData.length; i++) {
+                const trainingDate = getTrainingDate(i + 1);
+                if (trainingDate) {
+                    trainingDate.setHours(0, 0, 0, 0);
+                    if (trainingDate > today) {
+                        nextDayIndex = i;
+                        break;
+                    }
+                }
+            }
+
+            if (nextDayIndex >= 0) {
+                const nextDay = trainingData[nextDayIndex];
+                todayLabel.textContent = '下次訓練';
+                displayTrainingDay(nextDay, nextDayIndex);
+                const nextDate = getTrainingDate(nextDayIndex + 1);
+                todayNote.textContent = `${formatDate(nextDate)}`;
+                if (nextDay.intensity !== '休息') {
+                    todayActions.innerHTML = `
+                        <button class="btn-today-workout" onclick="openWorkoutModal(${nextDayIndex})">
+                            <span class="btn-icon">🚴</span>
+                            查看訓練
+                        </button>
+                    `;
+                } else {
+                    todayActions.innerHTML = '';
+                }
+            } else {
+                todayLabel.textContent = '休息日';
+                todayNote.textContent = '好好休息，為下次訓練做準備';
+                todayActions.innerHTML = '';
+            }
         }
-        todayActions.innerHTML = '';
     }
 
     function displayTrainingDay(day, index) {
