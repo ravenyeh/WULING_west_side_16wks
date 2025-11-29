@@ -961,13 +961,13 @@ function displayTodayTraining() {
 
         if (today < firstTrainingDate) {
             todayLabel.textContent = '訓練尚未開始';
-            todayNote.textContent = `訓練將於 ${formatDate(firstTrainingDate)} 開始`;
             // Pick a random non-rest day from 建構期
             const buildPhaseDays = trainingData
                 .map((day, index) => ({ ...day, index }))
                 .filter(day => day.phase === '建構期' && day.intensity !== '休息');
             const randomDay = buildPhaseDays[Math.floor(Math.random() * buildPhaseDays.length)];
             displayTrainingDay(randomDay, randomDay.index);
+            todayNote.textContent = `隨機預覽：建構期 Week ${randomDay.week} Day ${randomDay.day}`;
             // Show button to preview workout (use special preview mode)
             todayActions.innerHTML = `
                 <button class="btn-today-workout" onclick="openWorkoutModal(${randomDay.index}, true)">
