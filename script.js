@@ -694,12 +694,27 @@ function updatePacingDisplay() {
     // Update all metric values that show FTP percentages
     const metrics = document.querySelectorAll('.metric-value');
     metrics.forEach(metric => {
-        const text = metric.textContent;
-        // Match pattern like "FTP 65-70%"
-        const match = text.match(/FTP (\d+)-(\d+)%/);
-        if (match) {
-            const minPercent = parseInt(match[1]);
-            const maxPercent = parseInt(match[2]);
+        let minPercent, maxPercent;
+
+        // Check if we already stored the original FTP values
+        if (metric.dataset.ftpMin && metric.dataset.ftpMax) {
+            minPercent = parseInt(metric.dataset.ftpMin);
+            maxPercent = parseInt(metric.dataset.ftpMax);
+        } else {
+            // First time: parse from original text "FTP 65-70%"
+            const text = metric.textContent;
+            const match = text.match(/FTP (\d+)-(\d+)%/);
+            if (match) {
+                minPercent = parseInt(match[1]);
+                maxPercent = parseInt(match[2]);
+                // Store original values in data attributes for future updates
+                metric.dataset.ftpMin = minPercent;
+                metric.dataset.ftpMax = maxPercent;
+            }
+        }
+
+        // Calculate and display power values if we have FTP percentages
+        if (minPercent && maxPercent) {
             const minPower = calculatePower(minPercent);
             const maxPower = calculatePower(maxPercent);
             metric.innerHTML = `${minPower}-${maxPower}W<br><small style="opacity:0.7">(${minPercent}-${maxPercent}% FTP)</small>`;
