@@ -1596,7 +1596,7 @@ function downloadJson(dayIndex) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `wuling_W${day.week}D${day.day}_${day.phase}.json`;
+    a.download = `wuling_W${day.week}D${day.day}_${getPhaseEnglish(day.phase)}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -1700,6 +1700,17 @@ function escapeXml(str) {
         .replace(/'/g, '&apos;');
 }
 
+// Helper function to translate phase to English
+function getPhaseEnglish(phase) {
+    const phaseMap = {
+        '基礎期': 'base',
+        '建構期': 'build',
+        '巔峰期': 'peak',
+        '減量期': 'taper'
+    };
+    return phaseMap[phase] || phase;
+}
+
 // Download ERG file
 function downloadErg(dayIndex) {
     const day = trainingData[dayIndex];
@@ -1708,7 +1719,7 @@ function downloadErg(dayIndex) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `wuling_W${day.week}D${day.day}_${day.phase}.erg`;
+    a.download = `wuling_W${day.week}D${day.day}_${getPhaseEnglish(day.phase)}.erg`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -1723,7 +1734,7 @@ function downloadZwo(dayIndex) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `wuling_W${day.week}D${day.day}_${day.phase}.zwo`;
+    a.download = `wuling_W${day.week}D${day.day}_${getPhaseEnglish(day.phase)}.zwo`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
