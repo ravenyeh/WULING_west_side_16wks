@@ -829,11 +829,92 @@ function updateSegmentPacing() {
         });
     });
 
-    // Update total time display
-    const totalMinutes = pacingData.reduce((sum, seg) => sum + seg.timeMinutes, 0);
-    const hours = Math.floor(totalMinutes / 60);
-    const mins = totalMinutes % 60;
-    console.log(`目標完賽時間: ${hours}:${String(mins).padStart(2, '0')}`);
+    // Update goal display and pacing summary
+    updateGoalDisplay();
+    updatePacingSummary(pacingData);
+}
+
+// Update goal display based on target time
+function updateGoalDisplay() {
+    const hours = Math.floor(targetTime / 60);
+    const minutes = targetTime % 60;
+
+    // Update goal number
+    const goalNumber = document.getElementById('goalNumber');
+    const goalSuffix = document.getElementById('goalSuffix');
+    const goalTimeText = document.getElementById('goalTimeText');
+
+    if (goalNumber && goalSuffix) {
+        if (minutes === 0) {
+            goalNumber.textContent = hours;
+            goalSuffix.textContent = '小時大關';
+        } else {
+            goalNumber.textContent = `${hours}:${String(minutes).padStart(2, '0')}`;
+            goalSuffix.textContent = '完賽';
+        }
+    }
+
+    // Update goal description text
+    if (goalTimeText) {
+        const timeStr = minutes === 0 ? `${hours}小時` : `${hours}小時${minutes}分`;
+        const subLabel = hours < 4 ? `SUB${hours}` : (hours === 4 && minutes === 0 ? 'SUB4' : `${hours}H${minutes > 0 ? minutes : ''}`);
+        goalTimeText.textContent = `${subLabel}（${timeStr}內完成）是您的挑戰目標，需要優秀的體能與精準的配速策略。`;
+    }
+}
+
+// Update pacing summary table
+function updatePacingSummary(pacingData) {
+    const title = document.getElementById('pacingSummaryTitle');
+    const table = document.getElementById('pacingSummaryTable');
+
+    if (!title || !table) return;
+
+    // Update title
+    const hours = Math.floor(targetTime / 60);
+    const minutes = targetTime % 60;
+    const timeLabel = hours < 4 ? `SUB${hours}` : (hours === 4 && minutes === 0 ? 'SUB4' : `${hours}:${String(minutes).padStart(2, '0')}`);
+    title.textContent = `${timeLabel} 配速總結`;
+
+    // Build summary table
+    const segmentNotes = ['暖身保守', '建立節奏', '穩定輸出', '高海拔適應', '保留體力', '最後補給', '最終衝刺'];
+    let cumulativeDistance = 0;
+    let cumulativeTime = 0;
+
+    let html = `
+        <div class="summary-row header">
+            <span>區段</span>
+            <span>里程</span>
+            <span>累計里程</span>
+            <span>目標時間</span>
+            <span>累計時間</span>
+            <span>備註</span>
+        </div>
+    `;
+
+    pacingData.forEach((seg, index) => {
+        cumulativeDistance += seg.distance;
+        cumulativeTime += seg.timeMinutes;
+
+        const isLast = index === pacingData.length - 1;
+        const rowClass = isLast ? 'summary-row highlight' : 'summary-row';
+
+        const cumHours = Math.floor(cumulativeTime / 60);
+        const cumMins = cumulativeTime % 60;
+        const cumTimeStr = `${cumHours}:${String(cumMins).padStart(2, '0')}`;
+
+        html += `
+            <div class="${rowClass}">
+                <span>${seg.name}</span>
+                <span>${seg.distance}km</span>
+                <span>${cumulativeDistance}km</span>
+                <span>${seg.timeMinutes}min</span>
+                <span>${cumTimeStr}</span>
+                <span>${segmentNotes[index] || ''}</span>
+            </div>
+        `;
+    });
+
+    table.innerHTML = html;
 }
 
 // Format time helper

@@ -151,14 +151,14 @@
         <div class="container">
             <h2 class="section-title">挑戰目標</h2>
             <div class="goal-highlight">
-                <div class="goal-main">
-                    <span class="goal-text">突破</span>
-                    <span class="goal-number">4</span>
-                    <span class="goal-text">小時大關</span>
+                <div class="goal-main" id="goalMain">
+                    <span class="goal-text" id="goalPrefix">突破</span>
+                    <span class="goal-number" id="goalNumber">4</span>
+                    <span class="goal-text" id="goalSuffix">小時大關</span>
                 </div>
-                <p class="goal-description">
+                <p class="goal-description" id="goalDescription">
                     西進武嶺是台灣最經典的自行車挑戰路線，從埔里地理中心碑到武嶺，全長約 <strong>54公里</strong>，爬升超過 <strong>2,000公尺</strong>。
-                    SUB4（4小時內完成）是業餘車手的重要里程碑，需要優秀的體能與精準的配速策略。
+                    <span id="goalTimeText">SUB4（4小時內完成）是業餘車手的重要里程碑，需要優秀的體能與精準的配速策略。</span>
                 </p>
             </div>
 
@@ -548,8 +548,8 @@
 
             <!-- Pacing Summary -->
             <div class="pacing-summary">
-                <h3>SUB4 配速總結</h3>
-                <div class="summary-table">
+                <h3 id="pacingSummaryTitle">SUB4 配速總結</h3>
+                <div class="summary-table" id="pacingSummaryTable">
                     <div class="summary-row header">
                         <span>區段</span>
                         <span>里程</span>
