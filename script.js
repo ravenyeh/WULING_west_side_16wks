@@ -861,7 +861,13 @@ function updateGoalDisplay() {
     // Update goal description text
     if (goalTimeText) {
         const timeStr = minutes === 0 ? `${hours}小時` : `${hours}小時${minutes}分`;
-        const subLabel = hours < 4 ? `SUB${hours}` : (hours === 4 && minutes === 0 ? 'SUB4' : `${hours}H${minutes > 0 ? minutes : ''}`);
+        // SUB label only for exact hours (e.g., SUB3 for 3:00, SUB4 for 4:00)
+        let subLabel;
+        if (minutes === 0 && hours <= 5) {
+            subLabel = `SUB${hours}`;
+        } else {
+            subLabel = `${hours}:${String(minutes).padStart(2, '0')}`;
+        }
         goalTimeText.textContent = `${subLabel}（${timeStr}內完成）是您的挑戰目標，需要優秀的體能與精準的配速策略。`;
     }
 }
@@ -873,10 +879,15 @@ function updatePacingSummary(pacingData) {
 
     if (!title || !table) return;
 
-    // Update title
+    // Update title - SUB label only for exact hours
     const hours = Math.floor(targetTime / 60);
     const minutes = targetTime % 60;
-    const timeLabel = hours < 4 ? `SUB${hours}` : (hours === 4 && minutes === 0 ? 'SUB4' : `${hours}:${String(minutes).padStart(2, '0')}`);
+    let timeLabel;
+    if (minutes === 0 && hours <= 5) {
+        timeLabel = `SUB${hours}`;
+    } else {
+        timeLabel = `${hours}:${String(minutes).padStart(2, '0')}`;
+    }
     title.textContent = `${timeLabel} 配速總結`;
 
     // Build summary table
