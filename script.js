@@ -1393,11 +1393,13 @@ function convertToGarminWorkoutLegacy(day, dayIndex) {
     const trainingDate = getTrainingDate(dayIndex + 1);
     const dateStr = trainingDate ? formatDate(trainingDate) : `Week ${day.week} Day ${day.day}`;
 
+    const dynamicDesc = generateDynamicContent(day.content, day.intensity);
+
     const workout = {
         workoutId: null,
         ownerId: null,
         workoutName: `西進武嶺 W${day.week}D${day.day} - ${day.phase}`,
-        description: `${day.content}\n\n距離：${day.distance}km | 爬升：${day.elevation}m | 時間：${day.hours}h`,
+        description: `${dynamicDesc}\n\n距離：${day.distance}km | 爬升：${day.elevation}m | 時間：${day.hours}h`,
         sportType: {
             sportTypeId: 2,
             sportTypeKey: "cycling"
@@ -1608,11 +1610,12 @@ function generateErgFile(day, dayIndex) {
     const ftpValue = userFTP || 200; // Default FTP if not set
     const workout = convertToGarminWorkout(day, dayIndex);
     const steps = workout.workoutSegments[0].workoutSteps;
+    const dynamicDesc = generateDynamicContent(day.content, day.intensity);
 
     let ergContent = '[COURSE HEADER]\n';
     ergContent += 'VERSION = 2\n';
     ergContent += 'UNITS = ENGLISH\n';
-    ergContent += `DESCRIPTION = ${day.content}\n`;
+    ergContent += `DESCRIPTION = ${dynamicDesc}\n`;
     ergContent += `FILE NAME = wuling_W${day.week}D${day.day}\n`;
     ergContent += 'MINUTES WATTS\n';
     ergContent += '[END COURSE HEADER]\n';
@@ -1642,12 +1645,13 @@ function generateErgFile(day, dayIndex) {
 function generateZwoFile(day, dayIndex) {
     const workout = convertToGarminWorkout(day, dayIndex);
     const steps = workout.workoutSegments[0].workoutSteps;
+    const dynamicDesc = generateDynamicContent(day.content, day.intensity);
 
     let zwoContent = '<?xml version="1.0" encoding="UTF-8"?>\n';
     zwoContent += '<workout_file>\n';
     zwoContent += '    <author>西進武嶺 SUB4 訓練計劃</author>\n';
     zwoContent += `    <name>${escapeXml(workout.workoutName)}</name>\n`;
-    zwoContent += `    <description>${escapeXml(day.content)}</description>\n`;
+    zwoContent += `    <description>${escapeXml(dynamicDesc)}</description>\n`;
     zwoContent += '    <sportType>bike</sportType>\n';
     zwoContent += '    <tags>\n';
     zwoContent += `        <tag name="${day.phase}"/>\n`;
