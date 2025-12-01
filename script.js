@@ -813,6 +813,10 @@ function updateSegmentPacing() {
                 value.dataset.targetTime = minutes;
             }
 
+            if (labelText === '平均時速') {
+                value.textContent = `${seg.speed} km/h`;
+            }
+
             if (labelText === '目標功率') {
                 // Store original FTP range for updatePacingDisplay to use
                 value.dataset.ftpMin = seg.powerPercentMin;
@@ -886,8 +890,8 @@ function updatePacingSummary(pacingData) {
             <span>里程</span>
             <span>累計里程</span>
             <span>目標時間</span>
+            <span>時速</span>
             <span>累計時間</span>
-            <span>備註</span>
         </div>
     `;
 
@@ -908,8 +912,8 @@ function updatePacingSummary(pacingData) {
                 <span>${seg.distance}km</span>
                 <span>${cumulativeDistance}km</span>
                 <span>${seg.timeMinutes}min</span>
+                <span>${seg.speed}km/h</span>
                 <span>${cumTimeStr}</span>
-                <span>${segmentNotes[index] || ''}</span>
             </div>
         `;
     });
