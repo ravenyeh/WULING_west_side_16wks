@@ -201,6 +201,24 @@ body {
     color: rgba(255, 255, 255, 0.4);
 }
 
+.time-input-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.time-input {
+    width: 55px !important;
+    text-align: center;
+    padding: 8px 8px !important;
+}
+
+.time-separator {
+    color: var(--white);
+    font-size: 1.1rem;
+    font-weight: bold;
+}
+
 .btn-save-settings {
     padding: 8px 20px;
     background: var(--primary-color);
