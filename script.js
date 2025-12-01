@@ -4,6 +4,51 @@
 // User settings
 let raceDate = null;
 let userFTP = null;
+let targetTime = 240; // Target finish time in minutes (default 4 hours)
+
+// Route segments data for pacing calculation
+const routeSegments = [
+    { id: 1, name: '埔里 → 人止關', distance: 14, elevation: 250, basePowerPercent: 67.5 },  // FTP 65-70%
+    { id: 2, name: '人止關 → 霧社', distance: 10, elevation: 450, basePowerPercent: 72.5 },  // FTP 70-75%
+    { id: 3, name: '霧社 → 清境', distance: 8, elevation: 600, basePowerPercent: 74 },       // FTP 70-78%
+    { id: 4, name: '清境 → 翠峰', distance: 9, elevation: 560, basePowerPercent: 68.5 },     // FTP 65-72%
+    { id: 5, name: '翠峰 → 鳶峰', distance: 6, elevation: 450, basePowerPercent: 68.5 },     // FTP 65-72%
+    { id: 6, name: '鳶峰 → 昆陽', distance: 4, elevation: 320, basePowerPercent: 72.5 },     // FTP 70-75%
+    { id: 7, name: '昆陽 → 武嶺', distance: 3, elevation: 205, basePowerPercent: 80 }        // FTP 75-85%
+];
+
+// Calculate segment pacing based on target time
+function calculateSegmentPacing() {
+    const totalDistance = 54; // km
+    const totalElevation = 2835; // m
+
+    // Weight factors for each segment (harder segments get more time)
+    const segmentWeights = routeSegments.map(seg => {
+        // Weight based on gradient (elevation/distance) and distance
+        const gradient = seg.elevation / seg.distance / 10; // normalize
+        return seg.distance * (1 + gradient * 0.5);
+    });
+
+    const totalWeight = segmentWeights.reduce((a, b) => a + b, 0);
+
+    return routeSegments.map((seg, index) => {
+        const timeMinutes = (segmentWeights[index] / totalWeight) * targetTime;
+        const speed = seg.distance / (timeMinutes / 60);
+
+        // Adjust power based on target time (faster = higher power)
+        const baseTime = 240; // 4 hours baseline
+        const timeRatio = baseTime / targetTime;
+        const adjustedPowerPercent = seg.basePowerPercent * Math.pow(timeRatio, 0.3);
+
+        return {
+            ...seg,
+            timeMinutes: Math.round(timeMinutes),
+            speed: Math.round(speed * 10) / 10,
+            powerPercentMin: Math.round(adjustedPowerPercent - 5),
+            powerPercentMax: Math.round(adjustedPowerPercent + 5)
+        };
+    });
+}
 
 // Power Zones based on FTP (Coggan zones)
 const powerZones = {
@@ -626,6 +671,19 @@ function loadSavedSettings() {
         document.getElementById('ftpInput').value = userFTP;
         updateFTPDisplay();
     }
+
+    // Load target time
+    const savedTargetTime = localStorage.getItem('wulingTargetTime');
+    if (savedTargetTime) {
+        targetTime = parseInt(savedTargetTime);
+    }
+    const hours = Math.floor(targetTime / 60);
+    const minutes = targetTime % 60;
+    document.getElementById('targetHours').value = hours;
+    document.getElementById('targetMinutes').value = minutes;
+
+    // Update pacing display
+    updateSegmentPacing();
 }
 
 // Save settings
@@ -650,8 +708,17 @@ function saveSettings() {
         updateFTPDisplay();
     }
 
+    // Save target time
+    const targetHours = parseInt(document.getElementById('targetHours').value) || 4;
+    const targetMinutes = parseInt(document.getElementById('targetMinutes').value) || 0;
+    targetTime = targetHours * 60 + targetMinutes;
+    localStorage.setItem('wulingTargetTime', targetTime.toString());
+
     // Regenerate workouts with new FTP
     generateAllWorkouts();
+
+    // Update pacing with new target time
+    updateSegmentPacing();
 
     // Refresh all displays with new settings
     populateSchedule();
@@ -720,6 +787,63 @@ function updatePacingDisplay() {
             metric.innerHTML = `${minPower}-${maxPower}W<br><small style="opacity:0.7">(${minPercent}-${maxPercent}% FTP)</small>`;
         }
     });
+}
+
+// Update segment pacing based on target time
+function updateSegmentPacing() {
+    const pacingData = calculateSegmentPacing();
+
+    pacingData.forEach((seg, index) => {
+        const card = document.querySelector(`.pacing-card[data-segment="${index + 1}"]`);
+        if (!card) return;
+
+        const metrics = card.querySelectorAll('.metric');
+
+        metrics.forEach(metric => {
+            const label = metric.querySelector('.metric-label');
+            const value = metric.querySelector('.metric-value');
+            if (!label || !value) return;
+
+            const labelText = label.textContent;
+
+            if (labelText === '目標時間') {
+                const minutes = seg.timeMinutes;
+                const formattedTime = `${Math.floor(minutes / 60) > 0 ? Math.floor(minutes / 60) + ':' : ''}${String(minutes % 60).padStart(2, '0')} 分鐘`;
+                value.textContent = formattedTime;
+                value.dataset.targetTime = minutes;
+            }
+
+            if (labelText === '目標功率') {
+                // Store original FTP range for updatePacingDisplay to use
+                value.dataset.ftpMin = seg.powerPercentMin;
+                value.dataset.ftpMax = seg.powerPercentMax;
+
+                if (userFTP) {
+                    const minPower = calculatePower(seg.powerPercentMin);
+                    const maxPower = calculatePower(seg.powerPercentMax);
+                    value.innerHTML = `${minPower}-${maxPower}W<br><small style="opacity:0.7">(${seg.powerPercentMin}-${seg.powerPercentMax}% FTP)</small>`;
+                } else {
+                    value.textContent = `FTP ${seg.powerPercentMin}-${seg.powerPercentMax}%`;
+                }
+            }
+        });
+    });
+
+    // Update total time display
+    const totalMinutes = pacingData.reduce((sum, seg) => sum + seg.timeMinutes, 0);
+    const hours = Math.floor(totalMinutes / 60);
+    const mins = totalMinutes % 60;
+    console.log(`目標完賽時間: ${hours}:${String(mins).padStart(2, '0')}`);
+}
+
+// Format time helper
+function formatTimeMinutes(minutes) {
+    const hrs = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hrs > 0) {
+        return `${hrs}:${String(mins).padStart(2, '0')}`;
+    }
+    return `${mins}`;
 }
 
 // Get power zones summary for display

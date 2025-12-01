@@ -43,6 +43,14 @@
                     <label for="ftpInput" class="setting-label">FTP (瓦)</label>
                     <input type="number" id="ftpInput" class="setting-input" placeholder="例：200" min="100" max="500">
                 </div>
+                <div class="setting-group">
+                    <label for="targetTimeInput" class="setting-label">完賽目標</label>
+                    <div class="time-input-group">
+                        <input type="number" id="targetHours" class="setting-input time-input" placeholder="時" min="3" max="8" value="4">
+                        <span class="time-separator">:</span>
+                        <input type="number" id="targetMinutes" class="setting-input time-input" placeholder="分" min="0" max="59" value="0">
+                    </div>
+                </div>
                 <button id="saveSettingsBtn" class="btn-save-settings">儲存設定</button>
             </div>
 
@@ -230,7 +238,7 @@
 
             <div class="pacing-segments">
                 <!-- Segment 1 -->
-                <div class="pacing-card">
+                <div class="pacing-card" data-segment="1">
                     <div class="pacing-header segment-1">
                         <div class="segment-number">1</div>
                         <div class="segment-title">
@@ -274,7 +282,7 @@
                 </div>
 
                 <!-- Segment 2 -->
-                <div class="pacing-card">
+                <div class="pacing-card" data-segment="2">
                     <div class="pacing-header segment-2">
                         <div class="segment-number">2</div>
                         <div class="segment-title">
@@ -318,7 +326,7 @@
                 </div>
 
                 <!-- Segment 3 -->
-                <div class="pacing-card">
+                <div class="pacing-card" data-segment="3">
                     <div class="pacing-header segment-3">
                         <div class="segment-number">3</div>
                         <div class="segment-title">
@@ -362,7 +370,7 @@
                 </div>
 
                 <!-- Segment 4 -->
-                <div class="pacing-card">
+                <div class="pacing-card" data-segment="4">
                     <div class="pacing-header segment-4">
                         <div class="segment-number">4</div>
                         <div class="segment-title">
@@ -406,7 +414,7 @@
                 </div>
 
                 <!-- Segment 5 -->
-                <div class="pacing-card">
+                <div class="pacing-card" data-segment="5">
                     <div class="pacing-header segment-5">
                         <div class="segment-number">5</div>
                         <div class="segment-title">
@@ -450,7 +458,7 @@
                 </div>
 
                 <!-- Segment 6 -->
-                <div class="pacing-card">
+                <div class="pacing-card" data-segment="6">
                     <div class="pacing-header segment-6">
                         <div class="segment-number">6</div>
                         <div class="segment-title">
@@ -494,7 +502,7 @@
                 </div>
 
                 <!-- Segment 7 -->
-                <div class="pacing-card highlight-card">
+                <div class="pacing-card highlight-card" data-segment="7">
                     <div class="pacing-header segment-7">
                         <div class="segment-number">7</div>
                         <div class="segment-title">
