@@ -1,7 +1,7 @@
 // Workout Import History Module
 // Tracks workout imports to Garmin Connect using Supabase
 
-import { supabase } from './supabase.js';
+import { getSupabase } from './supabase.js';
 import { trainingData } from './trainingData.js';
 
 // LocalStorage key for Garmin user profile
@@ -56,6 +56,8 @@ export async function recordWorkoutImport({
     targetTime,
     raceDate
 }) {
+    console.log('recordWorkoutImport called:', { dayIndex, user: user?.displayName });
+
     if (!user || !user.displayName) {
         console.warn('Cannot record import: no Garmin user info');
         return { success: false, error: 'No user info' };
@@ -63,11 +65,14 @@ export async function recordWorkoutImport({
 
     const workout = trainingData[dayIndex];
     if (!workout) {
-        console.warn('Cannot record import: invalid day index');
+        console.warn('Cannot record import: invalid day index', dayIndex);
         return { success: false, error: 'Invalid day index' };
     }
 
     try {
+        const supabase = await getSupabase();
+        console.log('Supabase client ready, inserting...');
+
         const { data, error } = await supabase
             .from('workout_import_history')
             .insert({
@@ -91,7 +96,7 @@ export async function recordWorkoutImport({
             return { success: false, error: error.message };
         }
 
-        console.log('Workout import recorded:', data);
+        console.log('Workout import recorded successfully:', data);
         return { success: true, data };
     } catch (err) {
         console.error('Failed to record import:', err);
@@ -106,6 +111,7 @@ export async function recordWorkoutImport({
  */
 export async function getImportHistory(email = null) {
     try {
+        const supabase = await getSupabase();
         let query = supabase
             .from('workout_import_history')
             .select('*')
@@ -139,6 +145,7 @@ export async function hasWorkoutBeenImported(dayIndex, email) {
     if (!email) return false;
 
     try {
+        const supabase = await getSupabase();
         const { data, error } = await supabase
             .from('workout_import_history')
             .select('id')
@@ -169,6 +176,7 @@ export async function getImportStats(email) {
     }
 
     try {
+        const supabase = await getSupabase();
         const { data, error } = await supabase
             .from('workout_import_history')
             .select('day_index')
