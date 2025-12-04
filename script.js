@@ -737,6 +737,42 @@ function saveSettings() {
     }, 2000);
 }
 
+// Garmin credentials localStorage functions
+const GARMIN_CREDENTIALS_KEY = 'wulingGarminCredentials';
+
+function getGarminCredentials() {
+    const saved = localStorage.getItem(GARMIN_CREDENTIALS_KEY);
+    if (saved) {
+        try {
+            return JSON.parse(saved);
+        } catch (e) {
+            return null;
+        }
+    }
+    return null;
+}
+
+function saveGarminCredentials(email, password) {
+    localStorage.setItem(GARMIN_CREDENTIALS_KEY, JSON.stringify({ email, password }));
+}
+
+function hasGarminCredentials() {
+    const creds = getGarminCredentials();
+    return creds && creds.email && creds.password;
+}
+
+function clearGarminCredentials() {
+    localStorage.removeItem(GARMIN_CREDENTIALS_KEY);
+}
+
+// Get local timezone date string (YYYY-MM-DD)
+function getLocalDateString(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
 // Update FTP display
 function updateFTPDisplay() {
     const ftpDisplay = document.getElementById('ftpDisplay');
@@ -1464,13 +1500,31 @@ function openWorkoutModal(dayIndex, previewMode = false) {
 
                 <div class="garmin-section">
                     <h4>⌚ 匯入至 Garmin Connect</h4>
-                    <div class="garmin-login-form">
-                        <input type="email" class="garmin-input" id="garminEmail" placeholder="Garmin 帳號 (Email)">
-                        <input type="password" class="garmin-input" id="garminPassword" placeholder="Garmin 密碼">
-                        <button class="btn-garmin-import" onclick="importToGarmin(${dayIndex})">
-                            一鍵匯入 Garmin Connect
-                        </button>
-                    </div>
+                    ${hasGarminCredentials() ? `
+                        <div class="garmin-logged-in">
+                            <div class="garmin-user-info">
+                                <span class="garmin-user-icon">👤</span>
+                                <span class="garmin-user-email">${getGarminCredentials().email}</span>
+                            </div>
+                            <div class="garmin-action-buttons">
+                                <button class="btn-garmin-direct-import" onclick="directImportToGarmin(${dayIndex})">
+                                    直接匯入訓練
+                                </button>
+                                <button class="btn-garmin-logout" onclick="logoutGarmin()">
+                                    登出
+                                </button>
+                            </div>
+                        </div>
+                    ` : `
+                        <div class="garmin-login-form">
+                            <input type="email" class="garmin-input" id="garminEmail" placeholder="Garmin 帳號 (Email)">
+                            <input type="password" class="garmin-input" id="garminPassword" placeholder="Garmin 密碼">
+                            <button class="btn-garmin-import" onclick="importToGarmin(${dayIndex})">
+                                登入並匯入訓練
+                            </button>
+                            <p class="garmin-hint">登入成功後，帳號資訊會儲存在瀏覽器中，下次可直接匯入</p>
+                        </div>
+                    `}
                     <div class="garmin-status" id="garminStatus"></div>
                 </div>
             ` : `
@@ -1965,7 +2019,7 @@ function downloadZwo(dayIndex) {
     URL.revokeObjectURL(url);
 }
 
-// Import to Garmin Connect
+// Import to Garmin Connect (with login)
 async function importToGarmin(dayIndex) {
     const email = document.getElementById('garminEmail').value;
     const password = document.getElementById('garminPassword').value;
@@ -1974,9 +2028,30 @@ async function importToGarmin(dayIndex) {
     if (!email || !password) {
         statusDiv.textContent = '請輸入 Garmin 帳號和密碼';
         statusDiv.className = 'garmin-status error';
+        statusDiv.style.display = 'block';
         return;
     }
 
+    await doGarminImport(dayIndex, email, password, true);
+}
+
+// Direct import to Garmin Connect (using saved credentials)
+async function directImportToGarmin(dayIndex) {
+    const creds = getGarminCredentials();
+    if (!creds || !creds.email || !creds.password) {
+        const statusDiv = document.getElementById('garminStatus');
+        statusDiv.textContent = '請先登入 Garmin 帳號';
+        statusDiv.className = 'garmin-status error';
+        statusDiv.style.display = 'block';
+        return;
+    }
+
+    await doGarminImport(dayIndex, creds.email, creds.password, false);
+}
+
+// Core Garmin import function
+async function doGarminImport(dayIndex, email, password, isNewLogin) {
+    const statusDiv = document.getElementById('garminStatus');
     const day = trainingData[dayIndex];
     const workout = convertToGarminWorkout(day, dayIndex);
     // Use today's date when in preview mode, otherwise use scheduled training date
@@ -1998,7 +2073,7 @@ async function importToGarmin(dayIndex) {
                 password,
                 workouts: [{
                     workout,
-                    scheduledDate: trainingDate ? trainingDate.toISOString().split('T')[0] : null,
+                    scheduledDate: trainingDate ? getLocalDateString(trainingDate) : null,
                     dayIndex
                 }]
             })
@@ -2007,9 +2082,24 @@ async function importToGarmin(dayIndex) {
         const result = await response.json();
 
         if (result.success) {
+            // Save credentials on successful login
+            if (isNewLogin) {
+                saveGarminCredentials(email, password);
+            }
             statusDiv.textContent = `✓ ${result.message}`;
             statusDiv.className = 'garmin-status success';
+
+            // Refresh modal to show logged-in state after short delay
+            if (isNewLogin) {
+                setTimeout(() => {
+                    openWorkoutModal(dayIndex, currentPreviewMode);
+                }, 1500);
+            }
         } else {
+            // Clear credentials on authentication failure
+            if (result.error && (result.error.includes('認證') || result.error.includes('密碼') || result.error.includes('帳號') || result.error.includes('authentication') || result.error.includes('credentials'))) {
+                clearGarminCredentials();
+            }
             statusDiv.textContent = `✗ ${result.error}`;
             statusDiv.className = 'garmin-status error';
         }
@@ -2019,21 +2109,58 @@ async function importToGarmin(dayIndex) {
     }
 }
 
+// Logout from Garmin (clear saved credentials)
+function logoutGarmin() {
+    clearGarminCredentials();
+    // Get current modal state and re-open
+    const modal = document.getElementById('workoutModal');
+    if (modal.classList.contains('show')) {
+        // Find current dayIndex from the modal
+        const directImportBtn = modal.querySelector('.btn-garmin-direct-import');
+        if (directImportBtn) {
+            const onclick = directImportBtn.getAttribute('onclick');
+            const match = onclick.match(/directImportToGarmin\((\d+)\)/);
+            if (match) {
+                openWorkoutModal(parseInt(match[1]), currentPreviewMode);
+            }
+        }
+    }
+}
+
 // Batch import all workouts
 async function batchImportToGarmin() {
-    const email = prompt('請輸入 Garmin 帳號 (Email)：');
-    if (!email) return;
+    let email, password;
+    let isNewLogin = false;
 
-    const password = prompt('請輸入 Garmin 密碼：');
-    if (!password) return;
+    // Check for saved credentials
+    const savedCreds = getGarminCredentials();
+    if (savedCreds && savedCreds.email && savedCreds.password) {
+        const useSaved = confirm(`使用已儲存的帳號 ${savedCreds.email} 進行匯入？\n\n點擊「確定」使用已儲存帳號\n點擊「取消」輸入新帳號`);
+        if (useSaved) {
+            email = savedCreds.email;
+            password = savedCreds.password;
+        }
+    }
+
+    // Prompt for credentials if not using saved
+    if (!email || !password) {
+        email = prompt('請輸入 Garmin 帳號 (Email)：');
+        if (!email) return;
+
+        password = prompt('請輸入 Garmin 密碼：');
+        if (!password) return;
+
+        isNewLogin = true;
+    }
 
     const workoutsToImport = trainingData
         .filter(day => day.intensity !== '休息')
         .map((day, index) => {
             const globalIndex = trainingData.indexOf(day);
+            const trainingDate = getTrainingDate(globalIndex + 1);
             return {
                 workout: convertToGarminWorkout(day, globalIndex),
-                scheduledDate: getTrainingDate(globalIndex + 1)?.toISOString().split('T')[0],
+                scheduledDate: trainingDate ? getLocalDateString(trainingDate) : null,
                 dayIndex: globalIndex
             };
         });
@@ -2056,8 +2183,16 @@ async function batchImportToGarmin() {
         const result = await response.json();
 
         if (result.success) {
+            // Save credentials on successful login
+            if (isNewLogin) {
+                saveGarminCredentials(email, password);
+            }
             alert(`匯入完成！\n${result.message}`);
         } else {
+            // Clear credentials on authentication failure
+            if (result.error && (result.error.includes('認證') || result.error.includes('密碼') || result.error.includes('帳號') || result.error.includes('authentication') || result.error.includes('credentials'))) {
+                clearGarminCredentials();
+            }
             alert(`匯入失敗：${result.error}`);
         }
     } catch (error) {
