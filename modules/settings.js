@@ -284,6 +284,20 @@ export function updateGoalDisplay() {
     if (keyTipsTitle) {
         keyTipsTitle.textContent = `${goalText} 關鍵要點`;
     }
+
+    // Update footer
+    const footerCopyright = document.querySelector('.footer-copyright');
+    if (footerCopyright) {
+        footerCopyright.textContent = `西進武嶺 ${goalText} 16週訓練計劃`;
+    }
+
+    // Update footer tag
+    const footerTags = document.querySelectorAll('.footer-tags .tag');
+    footerTags.forEach(tag => {
+        if (tag.textContent.includes('SUB') || tag.textContent.match(/^#\d:\d{2}$/)) {
+            tag.textContent = `#${goalText}`;
+        }
+    });
 }
 
 // Garmin credentials functions
