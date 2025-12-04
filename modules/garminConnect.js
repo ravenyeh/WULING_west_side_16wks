@@ -88,9 +88,6 @@ export async function doGarminImport(dayIndex, email, password, isNewLogin) {
         const result = await response.json();
 
         if (result.success) {
-            // Debug: confirm code is running
-            alert('DEBUG: Garmin success, user=' + JSON.stringify(result.user ? result.user.displayName : 'missing'));
-
             if (isNewLogin) {
                 saveGarminCredentials(email, password);
             }
@@ -98,7 +95,9 @@ export async function doGarminImport(dayIndex, email, password, isNewLogin) {
             // Save user profile and record import history
             if (result.user) {
                 saveGarminUser(result.user);
-                // Record to Supabase with debug feedback
+                // Record to Supabase with visible status feedback
+                updateGarminStatus(`✓ ${result.message} | 記錄中...`, false);
+
                 recordWorkoutImport({
                     dayIndex,
                     scheduledDate: trainingDate ? getLocalDateString(trainingDate) : null,
@@ -108,21 +107,20 @@ export async function doGarminImport(dayIndex, email, password, isNewLogin) {
                     raceDate
                 }).then(res => {
                     console.log('Supabase record result:', res);
-                    // Debug alert - remove after testing
                     if (res.success) {
-                        console.log('✓ Supabase: 記錄成功');
+                        updateGarminStatus(`✓ ${result.message} | DB: 已記錄 ✓`, false);
                     } else {
-                        alert('Supabase 記錄失敗: ' + (res.error || 'Unknown error'));
+                        updateGarminStatus(`✓ ${result.message} | DB失敗: ${res.error || 'Unknown'}`, true);
                     }
                 }).catch(err => {
                     console.warn('Failed to record import:', err);
-                    alert('Supabase 錯誤: ' + err.message);
+                    updateGarminStatus(`✓ ${result.message} | DB錯誤: ${err.message}`, true);
                 });
             } else {
-                alert('Debug: result.user is missing');
+                updateGarminStatus(`✓ ${result.message} | 無user資料`, true);
             }
 
-            updateGarminStatus(`✓ ${result.message}`, false);
+            // Don't call updateGarminStatus again here - it's handled above
 
             // Dispatch event to refresh modal
             if (isNewLogin) {
