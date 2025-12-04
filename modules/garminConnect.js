@@ -88,6 +88,9 @@ export async function doGarminImport(dayIndex, email, password, isNewLogin) {
         const result = await response.json();
 
         if (result.success) {
+            // Debug: confirm code is running
+            alert('DEBUG: Garmin success, user=' + JSON.stringify(result.user ? result.user.displayName : 'missing'));
+
             if (isNewLogin) {
                 saveGarminCredentials(email, password);
             }
