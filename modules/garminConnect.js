@@ -95,7 +95,7 @@ export async function doGarminImport(dayIndex, email, password, isNewLogin) {
             // Save user profile and record import history
             if (result.user) {
                 saveGarminUser(result.user);
-                // Record to Supabase (async, don't wait)
+                // Record to Supabase with debug feedback
                 recordWorkoutImport({
                     dayIndex,
                     scheduledDate: trainingDate ? getLocalDateString(trainingDate) : null,
@@ -103,7 +103,20 @@ export async function doGarminImport(dayIndex, email, password, isNewLogin) {
                     userFTP,
                     targetTime,
                     raceDate
-                }).catch(err => console.warn('Failed to record import:', err));
+                }).then(res => {
+                    console.log('Supabase record result:', res);
+                    // Debug alert - remove after testing
+                    if (res.success) {
+                        console.log('✓ Supabase: 記錄成功');
+                    } else {
+                        alert('Supabase 記錄失敗: ' + (res.error || 'Unknown error'));
+                    }
+                }).catch(err => {
+                    console.warn('Failed to record import:', err);
+                    alert('Supabase 錯誤: ' + err.message);
+                });
+            } else {
+                alert('Debug: result.user is missing');
             }
 
             updateGarminStatus(`✓ ${result.message}`, false);
