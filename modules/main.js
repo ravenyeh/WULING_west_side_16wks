@@ -12,7 +12,7 @@ import {
     updateSegmentPacing, updateGoalDisplay,
     hasGarminCredentials, getGarminCredentials
 } from './settings.js';
-import { formatDate, formatDateShort, getStepTypeLabel, formatDurationLabel, formatTargetDescription } from './utils.js';
+import { formatDate, formatDateShort } from './utils.js';
 import { generateAllWorkouts, convertToGarminWorkout, getTrainingDate } from './workoutBuilder.js';
 import { downloadJson, downloadErg, downloadZwo, copyJson } from './workoutExport.js';
 import {
@@ -521,41 +521,87 @@ function renderWorkoutStepsPreview(workoutData) {
     return html;
 }
 
-// Render single step item
+// Render single step item (handles both regular steps and repeat groups)
 function renderStepItem(step) {
-    const stepType = step.stepType?.stepTypeKey;
+    const stepType = step.stepType?.stepTypeKey || 'interval';
 
+    // Handle repeat groups
     if (stepType === 'repeat' && step.workoutSteps) {
-        let html = `<div class="step-item repeat-group">`;
-        html += `<div class="step-label">🔄 重複 ${step.numberOfIterations}x</div>`;
-        html += `<div class="repeat-steps">`;
-        step.workoutSteps.forEach(childStep => {
-            html += renderSingleStep(childStep);
+        let html = `<div class="step-repeat-group">
+            <div class="repeat-header">
+                <span class="repeat-times">${step.numberOfIterations || 2}x</span>
+                <span class="repeat-description">重複組</span>
+            </div>
+            <div class="repeat-steps">`;
+
+        step.workoutSteps.forEach(subStep => {
+            html += renderSingleStep(subStep);
         });
-        html += `</div></div>`;
+
+        html += '</div></div>';
         return html;
     }
 
     return renderSingleStep(step);
 }
 
-// Render single step (non-repeat)
+// Render a single executable step
 function renderSingleStep(step) {
     const stepType = step.stepType?.stepTypeKey || 'interval';
-    const duration = formatDurationLabel(step);
-    const target = formatTargetDescription(step, userFTP);
-    const label = getStepTypeLabel(step.stepType);
+    const stepColors = {
+        'warmup': '#E2001A',
+        'interval': '#007AFF',
+        'recovery': '#8E8E93',
+        'rest': '#8E8E93',
+        'cooldown': '#34C759'
+    };
+    const stepLabels = {
+        'warmup': '暖身 Warm Up',
+        'interval': '主課表 Interval',
+        'recovery': '恢復 Recover',
+        'rest': '休息 Rest',
+        'cooldown': '緩和 Cool Down'
+    };
 
-    let bgClass = 'step-interval';
-    if (stepType === 'warmup') bgClass = 'step-warmup';
-    else if (stepType === 'cooldown') bgClass = 'step-cooldown';
-    else if (stepType === 'rest' || stepType === 'recovery') bgClass = 'step-rest';
+    const color = stepColors[stepType] || '#007AFF';
+    const label = stepLabels[stepType] || 'Interval';
+
+    // Format duration
+    let durationText = '';
+    const endCondition = step.endCondition?.conditionTypeKey;
+    if (endCondition === 'time') {
+        const secs = step.endConditionValue || 0;
+        const mins = Math.floor(secs / 60);
+        const remainingSecs = secs % 60;
+        durationText = remainingSecs > 0 ? `${mins}:${String(remainingSecs).padStart(2, '0')}` : `${mins}:00`;
+    } else if (endCondition === 'distance') {
+        const meters = step.endConditionValue || 0;
+        durationText = meters >= 1000 ? `${(meters / 1000).toFixed(1)} km` : `${meters} m`;
+    } else if (endCondition === 'lap.button') {
+        durationText = '按下計圈鍵';
+    }
+
+    // Format target (power)
+    let targetText = '';
+    const targetType = step.targetType?.workoutTargetTypeKey;
+    if (targetType === 'power' && step.targetValueOne && step.targetValueTwo) {
+        targetText = `功率目標 · ${Math.round(step.targetValueOne)}-${Math.round(step.targetValueTwo)} W`;
+    } else if (targetType === 'power.zone' && step.targetValueOne) {
+        targetText = `功率區間 · Zone ${step.targetValueOne}`;
+    }
+
+    // Description
+    let descriptionText = step.description || '';
 
     return `
-        <div class="step-item ${bgClass}">
-            <span class="step-label">${label}</span>
-            <span class="step-duration">${duration}</span>
-            <span class="step-target">${target}</span>
+        <div class="step-item step-type-${stepType}">
+            <div class="step-color-bar" style="background-color: ${color}"></div>
+            <div class="step-content">
+                <div class="step-label">${label}</div>
+                ${descriptionText ? `<div class="step-description">${descriptionText}</div>` : ''}
+                <div class="step-duration">${durationText}</div>
+                ${targetText ? `<div class="step-target">${targetText}</div>` : ''}
+            </div>
         </div>
     `;
 }
