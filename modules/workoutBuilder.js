@@ -257,50 +257,92 @@ export function buildWorkoutSteps(day) {
     const content = day.content;
     const intervalMatch = content.match(/(\d+)x(\d+)\s*min/i);
 
-    let mainZone = zones.z3;
-    let zoneDesc = 'Tempo';
+    // Check for "long ride with embedded section" pattern (e.g., "包含 30min 節奏段")
+    const embeddedMatch = content.match(/包含\s*(\d+)\s*min\s*(節奏|Sweet Spot|閾值|FTP|VO2max)/i) ||
+                          content.match(/包含\s*(節奏|Sweet Spot|閾值|FTP|VO2max)\s*段?\s*(\d+)\s*min/i) ||
+                          content.match(/(\d+)\s*min\s*(節奏|Sweet Spot|閾值|FTP)段/i) ||
+                          content.match(/(\d+)\s*hr?\s*@\s*(\d+)%/i);
 
-    if (content.includes('Sweet Spot') || content.includes('88-94%') || content.includes('90%')) {
-        mainZone = zones.ss;
-        zoneDesc = 'Sweet Spot @ 88-94% FTP';
-    } else if (content.match(/@ ?FTP/) || content.includes('閾值') || content.includes('100%') || content.includes('98-102%')) {
-        mainZone = zones.ftp;
-        zoneDesc = '閾值 @ 95-105% FTP';
-    } else if (content.includes('VO2max') || content.includes('110%') || content.includes('105%') || content.includes('105-120%')) {
-        mainZone = zones.z5;
-        zoneDesc = 'VO2max @ 105-120% FTP';
-    } else if (content.includes('Zone 2') || content.includes('有氧') || content.includes('恢復騎') || day.intensity === '輕鬆') {
-        mainZone = zones.z2;
-        zoneDesc = 'Zone 2 @ 55-75% FTP';
-    } else if (content.includes('Zone 3') || content.includes('節奏') || content.includes('75%') || content.includes('75-90%')) {
-        mainZone = zones.z3;
-        zoneDesc = 'Tempo @ 75-90% FTP';
-    } else if (content.includes('爬坡') || content.includes('坡度')) {
-        mainZone = zones.z4;
-        zoneDesc = '爬坡 @ 90-105% FTP';
-    } else if (content.includes('85%')) {
-        mainZone = { low: 83, high: 87 };
-        zoneDesc = 'Sub-threshold @ 83-87% FTP';
+    // Determine main zone based on content
+    function getZoneFromContent(text) {
+        if (text.includes('Sweet Spot') || text.includes('88-94%') || text.includes('90%')) {
+            return { zone: zones.ss, desc: 'Sweet Spot @ 88-94% FTP' };
+        } else if (text.match(/@ ?FTP/) || text.includes('閾值') || text.includes('100%') || text.includes('98-102%')) {
+            return { zone: zones.ftp, desc: '閾值 @ 95-105% FTP' };
+        } else if (text.includes('VO2max') || text.includes('110%') || text.includes('105-120%')) {
+            return { zone: zones.z5, desc: 'VO2max @ 105-120% FTP' };
+        } else if (text.includes('Zone 2') || text.includes('有氧') || text.includes('恢復騎')) {
+            return { zone: zones.z2, desc: 'Zone 2 @ 55-75% FTP' };
+        } else if (text.includes('Zone 3') || text.includes('節奏') || text.includes('75%') || text.includes('75-90%')) {
+            return { zone: zones.z3, desc: 'Tempo @ 75-90% FTP' };
+        } else if (text.includes('爬坡') || text.includes('坡度')) {
+            return { zone: zones.z4, desc: '爬坡 @ 90-105% FTP' };
+        } else if (text.includes('85%')) {
+            return { zone: { low: 83, high: 87 }, desc: 'Sub-threshold @ 83-87% FTP' };
+        }
+        return { zone: zones.z2, desc: 'Zone 2 @ 55-75% FTP' };
     }
 
     // 1. Warmup
     steps.push(createStep(1, "warmup", 600, zones.z2, "暖身 Warmup"));
 
     // 2. Main set
-    if (intervalMatch) {
+    const totalMainTime = Math.round((day.hours - 0.33) * 3600); // Total time minus warmup/cooldown
+
+    if (embeddedMatch) {
+        // Long ride with embedded high-intensity section
+        let embeddedDuration, embeddedType;
+
+        if (embeddedMatch[1] && !isNaN(parseInt(embeddedMatch[1]))) {
+            embeddedDuration = parseInt(embeddedMatch[1]) * 60;
+            embeddedType = embeddedMatch[2];
+        } else {
+            embeddedType = embeddedMatch[1];
+            embeddedDuration = parseInt(embeddedMatch[2]) * 60;
+        }
+
+        // Handle "2hr @ 70%" pattern
+        if (content.match(/(\d+)\s*hr?\s*@\s*(\d+)%/i)) {
+            const hrMatch = content.match(/(\d+)\s*hr?\s*@\s*(\d+)%/i);
+            embeddedDuration = parseInt(hrMatch[1]) * 3600;
+            const percent = parseInt(hrMatch[2]);
+            embeddedType = percent >= 88 ? 'Sweet Spot' : percent >= 75 ? '節奏' : 'Zone 2';
+        }
+
+        const embeddedZone = getZoneFromContent(embeddedType);
+        const z2Time = Math.max(600, totalMainTime - embeddedDuration);
+
+        // Zone 2 base riding first
+        const z2FirstHalf = Math.floor(z2Time / 2);
+        const z2SecondHalf = z2Time - z2FirstHalf;
+
+        steps.push(createStep(3, "interval", z2FirstHalf, zones.z2, "Zone 2 有氧騎乘"));
+        steps.push(createStep(3, "interval", embeddedDuration, embeddedZone.zone, embeddedZone.desc));
+        if (z2SecondHalf > 300) {
+            steps.push(createStep(3, "interval", z2SecondHalf, zones.z2, "Zone 2 有氧騎乘"));
+        }
+
+    } else if (intervalMatch) {
         const count = parseInt(intervalMatch[1]);
         const duration = parseInt(intervalMatch[2]) * 60;
         const restDuration = 300;
-        steps.push(createRepeatGroup(count, duration, mainZone, restDuration, zoneDesc));
+        const { zone, desc } = getZoneFromContent(content);
+        steps.push(createRepeatGroup(count, duration, zone, restDuration, desc));
+
     } else if (day.intensity === '高強度' || day.intensity === '最大') {
         if (day.intensity === '最大') {
             steps.push(createRepeatGroup(5, 300, zones.z5, 300, 'VO2max @ 105-120% FTP'));
         } else {
             steps.push(createRepeatGroup(4, 600, zones.ftp, 300, '閾值 @ 95-105% FTP'));
         }
+
     } else {
-        const mainDuration = Math.max(600, Math.round((day.hours - 0.33) * 3600));
-        steps.push(createStep(3, "interval", mainDuration, mainZone, zoneDesc));
+        // Default: use zone based on content or intensity
+        const { zone, desc } = day.intensity === '輕鬆'
+            ? { zone: zones.z2, desc: 'Zone 2 @ 55-75% FTP' }
+            : getZoneFromContent(content);
+        const mainDuration = Math.max(600, totalMainTime);
+        steps.push(createStep(3, "interval", mainDuration, zone, desc));
     }
 
     // 3. Cooldown
