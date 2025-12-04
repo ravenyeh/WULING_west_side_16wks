@@ -48,6 +48,7 @@ export function loadSavedSettings() {
     if (targetMinutesInput) targetMinutesInput.value = minutes;
 
     updateSegmentPacing();
+    updateGoalDisplay();
 }
 
 // Save settings to localStorage
@@ -236,11 +237,13 @@ export function updateGoalDisplay() {
     const hours = Math.floor(targetTime / 60);
     const mins = targetTime % 60;
     const isExactHour = mins === 0 && hours >= 3 && hours <= 8;
+    const goalText = isExactHour ? `SUB${hours}` : `${hours}:${String(mins).padStart(2, '0')}`;
 
     const goalPrefix = document.getElementById('goalPrefix');
     const goalNumber = document.getElementById('goalNumber');
     const goalSuffix = document.getElementById('goalSuffix');
     const goalTimeText = document.getElementById('goalTimeText');
+    const keyTipsTitle = document.getElementById('keyTipsTitle');
 
     if (goalPrefix && goalNumber && goalSuffix) {
         if (isExactHour) {
@@ -260,6 +263,11 @@ export function updateGoalDisplay() {
         } else {
             goalTimeText.textContent = `${hours}小時${mins > 0 ? mins + '分鐘' : ''}內完成需要優秀的體能與精準的配速策略。`;
         }
+    }
+
+    // Update key tips title
+    if (keyTipsTitle) {
+        keyTipsTitle.textContent = `${goalText} 關鍵要點`;
     }
 }
 

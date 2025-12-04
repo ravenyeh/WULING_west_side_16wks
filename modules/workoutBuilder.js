@@ -1,7 +1,7 @@
 // 西進武嶺 SUB4 16週訓練計劃 - Workout Builder Module
 
 import { trainingData } from './trainingData.js';
-import { userFTP, workoutZones, raceDate } from './powerZones.js';
+import { userFTP, workoutZones, raceDate, targetTime } from './powerZones.js';
 
 // Pre-generated workouts storage
 export let generatedWorkouts = [];
@@ -31,12 +31,27 @@ export function generateAllWorkouts() {
     console.log(`Generated ${generatedWorkouts.filter(w => w !== null).length} workouts`);
 }
 
+// Get goal text based on target time
+function getGoalText() {
+    const hours = Math.floor(targetTime / 60);
+    const mins = targetTime % 60;
+    const isExactHour = mins === 0 && hours >= 3 && hours <= 8;
+    return isExactHour ? `SUB${hours}` : `${hours}:${String(mins).padStart(2, '0')}`;
+}
+
 // Build a complete Garmin workout object
 export function buildWorkout(day, dayIndex) {
+    // Special handling for race day (Day 112)
+    const isRaceDay = day.week === 16 && day.day === 7;
+    const goalText = getGoalText();
+    const workoutName = isRaceDay
+        ? `比賽日！西進武嶺 ${goalText} 挑戰`
+        : `西進武嶺 W${day.week}D${day.day} - ${day.phase}`;
+
     return {
         workoutId: null,
         ownerId: null,
-        workoutName: `西進武嶺 W${day.week}D${day.day} - ${day.phase}`,
+        workoutName: workoutName,
         description: buildWorkoutDescription(day),
         sportType: {
             sportTypeId: 2,
