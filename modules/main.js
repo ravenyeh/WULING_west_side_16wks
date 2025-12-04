@@ -249,14 +249,36 @@ function displayTodayTraining() {
 
         if (firstDate && now < firstDate) {
             const daysUntil = Math.ceil((firstDate - now) / (1000 * 60 * 60 * 24));
+            // Pick a random non-rest day from 建構期 for preview
+            const buildPhaseDays = trainingData
+                .map((day, index) => ({ ...day, index }))
+                .filter(day => day.phase === '建構期' && day.intensity !== '休息');
+            const randomDay = buildPhaseDays[Math.floor(Math.random() * buildPhaseDays.length)];
+
             container.innerHTML = `
                 <div class="today-training-left">
                     <div class="today-training-header">
-                        <span class="today-label">訓練即將開始</span>
+                        <span class="today-label">訓練尚未開始</span>
+                        <span class="today-countdown">還有 ${daysUntil} 天</span>
                     </div>
                     <div class="today-training-content">
-                        <div class="today-description">訓練將於 ${daysUntil} 天後開始</div>
+                        <div class="today-tags">
+                            <span class="today-phase phase-${randomDay.phase}">${randomDay.phase}</span>
+                            <span class="today-intensity intensity-${randomDay.intensity}">${randomDay.intensity}</span>
+                        </div>
+                        <div class="today-description">${randomDay.content}</div>
+                        <div class="today-stats">
+                            ${randomDay.distance > 0 ? `<span class="today-stat">🚴 ${randomDay.distance}km</span>` : ''}
+                            ${randomDay.elevation > 0 ? `<span class="today-stat">⛰️ ${randomDay.elevation}m</span>` : ''}
+                            ${randomDay.hours > 0 ? `<span class="today-stat">⏱️ ${randomDay.hours}h</span>` : ''}
+                        </div>
+                        <div class="today-note">隨機預覽：建構期 Week ${randomDay.week} Day ${randomDay.day}</div>
                     </div>
+                </div>
+                <div class="today-actions">
+                    <button class="btn-today-workout" onclick="openWorkoutModal(${randomDay.index}, true)">
+                        查看訓練
+                    </button>
                 </div>
             `;
         } else if (lastDate && now > lastDate) {
