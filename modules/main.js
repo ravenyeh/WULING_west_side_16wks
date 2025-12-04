@@ -592,10 +592,18 @@ function renderSingleStep(step) {
     let durationText = '';
     const endCondition = step.endCondition?.conditionTypeKey;
     if (endCondition === 'time') {
-        const secs = step.endConditionValue || 0;
-        const mins = Math.floor(secs / 60);
-        const remainingSecs = secs % 60;
-        durationText = remainingSecs > 0 ? `${mins}:${String(remainingSecs).padStart(2, '0')}` : `${mins}:00`;
+        const totalSecs = step.endConditionValue || 0;
+        const hours = Math.floor(totalSecs / 3600);
+        const mins = Math.floor((totalSecs % 3600) / 60);
+        const secs = totalSecs % 60;
+
+        if (hours > 0) {
+            // HH:mm:ss format for durations >= 1 hour
+            durationText = `${hours}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        } else {
+            // mm:ss format for durations < 1 hour
+            durationText = `${mins}:${String(secs).padStart(2, '0')}`;
+        }
     } else if (endCondition === 'distance') {
         const meters = step.endConditionValue || 0;
         durationText = meters >= 1000 ? `${(meters / 1000).toFixed(1)} km` : `${meters} m`;
