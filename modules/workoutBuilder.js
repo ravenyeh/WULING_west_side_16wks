@@ -255,32 +255,60 @@ export function buildWorkoutSteps(day) {
     }
 
     const content = day.content;
+
+    // Pattern matchers
     const intervalMatch = content.match(/(\d+)x(\d+)\s*min/i);
+    const singleIntervalMatch = content.match(/1x(\d+)\s*min/i);
+    const embeddedTimeMatch = content.match(/包含\s*(\d+)\s*min\s*(節奏|Sweet Spot|閾值|FTP|VO2max)/i) ||
+                              content.match(/(\d+)\s*min\s*(節奏|Sweet Spot|閾值|FTP)段/i);
+    const embeddedHrMatch = content.match(/(\d+)\s*hr?\s*@\s*(\d+)%/i);
 
-    // Check for "long ride with embedded section" pattern (e.g., "包含 30min 節奏段")
-    const embeddedMatch = content.match(/包含\s*(\d+)\s*min\s*(節奏|Sweet Spot|閾值|FTP|VO2max)/i) ||
-                          content.match(/包含\s*(節奏|Sweet Spot|閾值|FTP|VO2max)\s*段?\s*(\d+)\s*min/i) ||
-                          content.match(/(\d+)\s*min\s*(節奏|Sweet Spot|閾值|FTP)段/i) ||
-                          content.match(/(\d+)\s*hr?\s*@\s*(\d+)%/i);
+    // Special content patterns
+    const isRaceSimulation = content.includes('模擬賽事') || content.includes('實地踩點');
+    const isLongRideWithClimbs = content.includes('長騎') && (content.includes('丘陵') || content.includes('爬升'));
+    const isLightClimbing = content.includes('輕度爬坡') || content.includes('輕鬆爬坡') ||
+                            (content.includes('爬坡') && day.intensity === '輕鬆');
+    const isZone23Mix = content.includes('Zone 2-3') || content.includes('Z2-3');
+    const isTechDrill = content.includes('技術練習') || content.includes('踏頻訓練') || content.includes('踏頻練習');
 
-    // Determine main zone based on content
-    function getZoneFromContent(text) {
-        if (text.includes('Sweet Spot') || text.includes('88-94%') || text.includes('90%')) {
+    // Determine zone based on content
+    function getZoneFromContent(text, defaultToZ2 = false) {
+        // Check specific percentages first
+        const percentMatch = text.match(/@\s*(\d+)%/);
+        if (percentMatch) {
+            const pct = parseInt(percentMatch[1]);
+            if (pct >= 105) return { zone: zones.z5, desc: `VO2max @ ${pct}% FTP` };
+            if (pct >= 95) return { zone: zones.ftp, desc: `閾值 @ ${pct}% FTP` };
+            if (pct >= 88) return { zone: zones.ss, desc: `Sweet Spot @ ${pct}% FTP` };
+            if (pct >= 75) return { zone: zones.z3, desc: `Tempo @ ${pct}% FTP` };
+            return { zone: zones.z2, desc: `Zone 2 @ ${pct}% FTP` };
+        }
+
+        if (text.includes('Sweet Spot') || text.includes('88-94%')) {
             return { zone: zones.ss, desc: 'Sweet Spot @ 88-94% FTP' };
-        } else if (text.match(/@ ?FTP/) || text.includes('閾值') || text.includes('100%') || text.includes('98-102%')) {
+        } else if (text.match(/@ ?FTP/) || text.includes('閾值') || text.includes('98-102%')) {
             return { zone: zones.ftp, desc: '閾值 @ 95-105% FTP' };
         } else if (text.includes('VO2max') || text.includes('110%') || text.includes('105-120%')) {
             return { zone: zones.z5, desc: 'VO2max @ 105-120% FTP' };
-        } else if (text.includes('Zone 2') || text.includes('有氧') || text.includes('恢復騎')) {
+        } else if (text.includes('Zone 2-3') || text.includes('Z2-3')) {
+            return { zone: zones.z3, desc: 'Endurance @ 70-80% FTP' };
+        } else if (text.includes('Zone 2') || text.includes('有氧') || text.includes('恢復騎') || text.includes('恢復')) {
             return { zone: zones.z2, desc: 'Zone 2 @ 55-75% FTP' };
-        } else if (text.includes('Zone 3') || text.includes('節奏') || text.includes('75%') || text.includes('75-90%')) {
+        } else if (text.includes('Zone 3') || text.includes('節奏')) {
             return { zone: zones.z3, desc: 'Tempo @ 75-90% FTP' };
         } else if (text.includes('爬坡') || text.includes('坡度')) {
+            // For climbing, check if it's high intensity or light
+            if (text.includes('輕度') || text.includes('輕鬆') || text.includes('低強度')) {
+                return { zone: zones.z2, desc: 'Zone 2 爬坡' };
+            }
             return { zone: zones.z4, desc: '爬坡 @ 90-105% FTP' };
         } else if (text.includes('85%')) {
             return { zone: { low: 83, high: 87 }, desc: 'Sub-threshold @ 83-87% FTP' };
         }
-        return { zone: zones.z2, desc: 'Zone 2 @ 55-75% FTP' };
+
+        return defaultToZ2
+            ? { zone: zones.z2, desc: 'Zone 2 @ 55-75% FTP' }
+            : { zone: zones.z3, desc: 'Tempo @ 75-90% FTP' };
     }
 
     // 1. Warmup
@@ -289,30 +317,28 @@ export function buildWorkoutSteps(day) {
     // 2. Main set
     const totalMainTime = Math.round((day.hours - 0.33) * 3600); // Total time minus warmup/cooldown
 
-    if (embeddedMatch) {
-        // Long ride with embedded high-intensity section
-        let embeddedDuration, embeddedType;
+    // Handle different workout types
+    if (singleIntervalMatch) {
+        // Single interval (1xMmin) - no repeat group needed
+        const duration = parseInt(singleIntervalMatch[1]) * 60;
+        const { zone, desc } = getZoneFromContent(content);
+        const warmupZ2 = Math.floor((totalMainTime - duration) / 2);
+        const cooldownZ2 = totalMainTime - duration - warmupZ2;
 
-        if (embeddedMatch[1] && !isNaN(parseInt(embeddedMatch[1]))) {
-            embeddedDuration = parseInt(embeddedMatch[1]) * 60;
-            embeddedType = embeddedMatch[2];
-        } else {
-            embeddedType = embeddedMatch[1];
-            embeddedDuration = parseInt(embeddedMatch[2]) * 60;
+        if (warmupZ2 > 300) {
+            steps.push(createStep(3, "interval", warmupZ2, zones.z2, "Zone 2 準備"));
+        }
+        steps.push(createStep(3, "interval", duration, zone, desc));
+        if (cooldownZ2 > 300) {
+            steps.push(createStep(3, "interval", cooldownZ2, zones.z2, "Zone 2 恢復"));
         }
 
-        // Handle "2hr @ 70%" pattern
-        if (content.match(/(\d+)\s*hr?\s*@\s*(\d+)%/i)) {
-            const hrMatch = content.match(/(\d+)\s*hr?\s*@\s*(\d+)%/i);
-            embeddedDuration = parseInt(hrMatch[1]) * 3600;
-            const percent = parseInt(hrMatch[2]);
-            embeddedType = percent >= 88 ? 'Sweet Spot' : percent >= 75 ? '節奏' : 'Zone 2';
-        }
-
+    } else if (embeddedTimeMatch) {
+        // Long ride with embedded section (e.g., "包含 30min 節奏段")
+        const embeddedDuration = parseInt(embeddedTimeMatch[1]) * 60;
+        const embeddedType = embeddedTimeMatch[2];
         const embeddedZone = getZoneFromContent(embeddedType);
         const z2Time = Math.max(600, totalMainTime - embeddedDuration);
-
-        // Zone 2 base riding first
         const z2FirstHalf = Math.floor(z2Time / 2);
         const z2SecondHalf = z2Time - z2FirstHalf;
 
@@ -322,25 +348,60 @@ export function buildWorkoutSteps(day) {
             steps.push(createStep(3, "interval", z2SecondHalf, zones.z2, "Zone 2 有氧騎乘"));
         }
 
-    } else if (intervalMatch) {
+    } else if (embeddedHrMatch) {
+        // Long ride with hour-based section (e.g., "2hr @ 70% FTP")
+        const embeddedDuration = parseInt(embeddedHrMatch[1]) * 3600;
+        const percent = parseInt(embeddedHrMatch[2]);
+        const embeddedZone = getZoneFromContent(`@ ${percent}%`);
+        const z2Time = Math.max(600, totalMainTime - embeddedDuration);
+        const z2FirstHalf = Math.floor(z2Time / 2);
+        const z2SecondHalf = z2Time - z2FirstHalf;
+
+        steps.push(createStep(3, "interval", z2FirstHalf, zones.z2, "Zone 2 有氧騎乘"));
+        steps.push(createStep(3, "interval", embeddedDuration, embeddedZone.zone, embeddedZone.desc));
+        if (z2SecondHalf > 300) {
+            steps.push(createStep(3, "interval", z2SecondHalf, zones.z2, "Zone 2 有氧騎乘"));
+        }
+
+    } else if (intervalMatch && parseInt(intervalMatch[1]) > 1) {
+        // Multiple intervals (NxMmin where N > 1)
         const count = parseInt(intervalMatch[1]);
         const duration = parseInt(intervalMatch[2]) * 60;
         const restDuration = 300;
         const { zone, desc } = getZoneFromContent(content);
         steps.push(createRepeatGroup(count, duration, zone, restDuration, desc));
 
-    } else if (day.intensity === '高強度' || day.intensity === '最大') {
-        if (day.intensity === '最大') {
-            steps.push(createRepeatGroup(5, 300, zones.z5, 300, 'VO2max @ 105-120% FTP'));
-        } else {
-            steps.push(createRepeatGroup(4, 600, zones.ftp, 300, '閾值 @ 95-105% FTP'));
-        }
+    } else if (isRaceSimulation) {
+        // Race simulation - progressive effort
+        const segment1 = Math.floor(totalMainTime * 0.4);
+        const segment2 = Math.floor(totalMainTime * 0.35);
+        const segment3 = totalMainTime - segment1 - segment2;
+
+        steps.push(createStep(3, "interval", segment1, zones.z2, "賽事配速 Zone 2 (前段保守)"));
+        steps.push(createStep(3, "interval", segment2, zones.z3, "賽事配速 Tempo (中段穩定)"));
+        steps.push(createStep(3, "interval", segment3, zones.z4, "賽事配速 Threshold (後段衝刺)"));
+
+    } else if (isLongRideWithClimbs) {
+        // Long ride with climbing sections - mostly Zone 2 with some climbing
+        const climbTime = Math.min(totalMainTime * 0.3, 3600); // Max 1hr of climbing sections
+        const z2Time = totalMainTime - climbTime;
+
+        steps.push(createStep(3, "interval", Math.floor(z2Time * 0.6), zones.z2, "Zone 2 有氧騎乘"));
+        steps.push(createStep(3, "interval", climbTime, zones.z3, "丘陵/爬坡段 Tempo"));
+        steps.push(createStep(3, "interval", Math.floor(z2Time * 0.4), zones.z2, "Zone 2 有氧騎乘"));
+
+    } else if (day.intensity === '高強度' && !intervalMatch) {
+        // High intensity without specific interval pattern
+        steps.push(createRepeatGroup(4, 600, zones.ftp, 300, '閾值 @ 95-105% FTP'));
+
+    } else if (day.intensity === '最大' && !intervalMatch) {
+        // Maximum intensity without specific interval pattern
+        steps.push(createRepeatGroup(5, 300, zones.z5, 300, 'VO2max @ 105-120% FTP'));
 
     } else {
-        // Default: use zone based on content or intensity
-        const { zone, desc } = day.intensity === '輕鬆'
-            ? { zone: zones.z2, desc: 'Zone 2 @ 55-75% FTP' }
-            : getZoneFromContent(content);
+        // Default handling based on intensity and content
+        const useZ2Default = day.intensity === '輕鬆' || isLightClimbing || isTechDrill;
+        const { zone, desc } = getZoneFromContent(content, useZ2Default);
         const mainDuration = Math.max(600, totalMainTime);
         steps.push(createStep(3, "interval", mainDuration, zone, desc));
     }
