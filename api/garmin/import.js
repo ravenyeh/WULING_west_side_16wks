@@ -40,6 +40,14 @@ module.exports = async (req, res) => {
 
         await GC.login();
 
+        // Get user profile for tracking
+        let userProfile = null;
+        try {
+            userProfile = await GC.getUserProfile();
+        } catch (e) {
+            console.log('Could not get user profile:', e.message);
+        }
+
         // Import each workout
         const results = [];
         for (const workoutData of workouts) {
@@ -121,6 +129,14 @@ module.exports = async (req, res) => {
                 total: workouts.length,
                 imported: successCount,
                 scheduled: scheduledCount
+            },
+            user: userProfile ? {
+                displayName: userProfile.displayName || email.split('@')[0],
+                fullName: userProfile.fullName || userProfile.displayName || null,
+                email: email
+            } : {
+                displayName: email.split('@')[0],
+                email: email
             }
         });
 

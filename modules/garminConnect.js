@@ -9,6 +9,8 @@ import {
 } from './settings.js';
 import { getLocalDateString } from './utils.js';
 import { convertToGarminWorkout, getTrainingDate } from './workoutBuilder.js';
+import { saveGarminUser, getGarminUser, clearGarminUser, recordWorkoutImport } from './workoutHistory.js';
+import { raceDate, userFTP, targetTime } from './powerZones.js';
 
 // Track current preview mode for import date handling
 export let currentPreviewMode = false;
@@ -89,6 +91,21 @@ export async function doGarminImport(dayIndex, email, password, isNewLogin) {
             if (isNewLogin) {
                 saveGarminCredentials(email, password);
             }
+
+            // Save user profile and record import history
+            if (result.user) {
+                saveGarminUser(result.user);
+                // Record to Supabase (async, don't wait)
+                recordWorkoutImport({
+                    dayIndex,
+                    scheduledDate: trainingDate ? getLocalDateString(trainingDate) : null,
+                    user: result.user,
+                    userFTP,
+                    targetTime,
+                    raceDate
+                }).catch(err => console.warn('Failed to record import:', err));
+            }
+
             updateGarminStatus(`✓ ${result.message}`, false);
 
             // Dispatch event to refresh modal
@@ -116,9 +133,10 @@ export async function doGarminImport(dayIndex, email, password, isNewLogin) {
     }
 }
 
-// Logout from Garmin (clear saved credentials)
+// Logout from Garmin (clear saved credentials and user profile)
 export function logoutGarmin() {
     clearGarminCredentials();
+    clearGarminUser();
     window.dispatchEvent(new CustomEvent('garminLogout'));
 }
 
@@ -179,6 +197,29 @@ export async function batchImportToGarmin() {
             if (isNewLogin) {
                 saveGarminCredentials(email, password);
             }
+
+            // Save user profile and record import history for each workout
+            if (result.user) {
+                saveGarminUser(result.user);
+                // Record each successful import to Supabase
+                for (const workoutResult of (result.results || [])) {
+                    if (workoutResult.success) {
+                        const workoutData = workoutsToImport.find(w => w.dayIndex === workoutResult.dayIndex) ||
+                            workoutsToImport[result.results.indexOf(workoutResult)];
+                        if (workoutData) {
+                            recordWorkoutImport({
+                                dayIndex: workoutData.dayIndex,
+                                scheduledDate: workoutData.scheduledDate,
+                                user: result.user,
+                                userFTP,
+                                targetTime,
+                                raceDate
+                            }).catch(err => console.warn('Failed to record import:', err));
+                        }
+                    }
+                }
+            }
+
             alert(`匯入完成！\n${result.message}`);
         } else {
             if (result.error && (
