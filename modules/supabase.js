@@ -3,17 +3,52 @@
 
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './supabaseConfig.js';
 
-// Import Supabase from CDN
-const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
+// Lazy-loaded Supabase client
+let supabaseClient = null;
+let initPromise = null;
 
-// Create and export the Supabase client
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+/**
+ * Initialize Supabase client (lazy loading)
+ * @returns {Promise<Object>} Supabase client
+ */
+async function initSupabase() {
+    if (supabaseClient) {
+        return supabaseClient;
+    }
+
+    if (initPromise) {
+        return initPromise;
+    }
+
+    initPromise = (async () => {
+        try {
+            const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
+            supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            console.log('Supabase client initialized');
+            return supabaseClient;
+        } catch (err) {
+            console.error('Failed to initialize Supabase:', err);
+            initPromise = null;
+            throw err;
+        }
+    })();
+
+    return initPromise;
+}
+
+/**
+ * Get the Supabase client (initializes if needed)
+ * @returns {Promise<Object>} Supabase client
+ */
+export async function getSupabase() {
+    return initSupabase();
+}
 
 // Helper function to check connection
 export async function checkConnection() {
     try {
+        const supabase = await getSupabase();
         const { data, error } = await supabase.from('_health_check').select('*').limit(1);
-        // Note: This will fail with 404 if table doesn't exist, but confirms API is reachable
         if (error && error.code !== 'PGRST116') {
             console.error('Supabase connection error:', error);
             return { connected: false, error };
