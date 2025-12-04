@@ -531,6 +531,13 @@ body {
     letter-spacing: 1px;
 }
 
+.today-countdown {
+    margin-left: 12px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.7);
+}
+
 .today-training-content {
     display: flex;
     flex-direction: column;
