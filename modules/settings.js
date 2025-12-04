@@ -239,6 +239,21 @@ export function updateGoalDisplay() {
     const isExactHour = mins === 0 && hours >= 3 && hours <= 8;
     const goalText = isExactHour ? `SUB${hours}` : `${hours}:${String(mins).padStart(2, '0')}`;
 
+    // Update page title
+    document.title = `西進武嶺 ${goalText} 16週訓練計劃 | Garmin 整合`;
+
+    // Update nav brand
+    const navBrand = document.querySelector('.nav-brand');
+    if (navBrand) {
+        navBrand.textContent = `西進武嶺 ${goalText}`;
+    }
+
+    // Update hero title
+    const heroTitle = document.querySelector('.hero-content h1');
+    if (heroTitle) {
+        heroTitle.textContent = `西進武嶺 ${goalText}`;
+    }
+
     const goalPrefix = document.getElementById('goalPrefix');
     const goalNumber = document.getElementById('goalNumber');
     const goalSuffix = document.getElementById('goalSuffix');
