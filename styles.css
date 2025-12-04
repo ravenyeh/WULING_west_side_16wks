@@ -1860,6 +1860,77 @@ body {
     display: block;
 }
 
+/* Garmin Logged-in State */
+.garmin-logged-in {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.garmin-user-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 15px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+}
+
+.garmin-user-icon {
+    font-size: 1.2rem;
+}
+
+.garmin-user-email {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.garmin-action-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-garmin-direct-import {
+    flex: 1;
+    padding: 12px 20px;
+    background: var(--secondary-color);
+    color: var(--white);
+    border: none;
+    border-radius: 25px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-garmin-direct-import:hover {
+    background: #333;
+    transform: scale(1.02);
+}
+
+.btn-garmin-logout {
+    padding: 12px 20px;
+    background: rgba(255, 255, 255, 0.3);
+    color: var(--secondary-color);
+    border: none;
+    border-radius: 25px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-garmin-logout:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+.garmin-hint {
+    font-size: 0.8rem;
+    opacity: 0.9;
+    margin: 5px 0 0 0;
+    text-align: center;
+}
+
 /* View Workout Button */
 .btn-view-workout {
     padding: 6px 12px;
