@@ -22,17 +22,6 @@
       "use": "@vercel/static"
     }
   ],
-  "headers": [
-    {
-      "source": "/modules/(.*).js",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "no-cache, no-store, must-revalidate"
-        }
-      ]
-    }
-  ],
   "routes": [
     {
       "src": "/api/garmin/login",
