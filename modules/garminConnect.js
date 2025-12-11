@@ -95,7 +95,7 @@ export async function doGarminImport(dayIndex, email, password, isNewLogin) {
             // Save user profile and record import history
             if (result.user) {
                 saveGarminUser(result.user);
-                // Record to Supabase with visible status feedback
+                // Record to Firebase with visible status feedback
                 updateGarminStatus(`✓ ${result.message} | 記錄中...`, false);
 
                 recordWorkoutImport({
@@ -106,7 +106,7 @@ export async function doGarminImport(dayIndex, email, password, isNewLogin) {
                     targetTime,
                     raceDate
                 }).then(res => {
-                    console.log('Supabase record result:', res);
+                    console.log('Firebase record result:', res);
                     if (res.success) {
                         updateGarminStatus(`✓ ${result.message} | DB: 已記錄 ✓`, false);
                     } else {
@@ -215,7 +215,7 @@ export async function batchImportToGarmin() {
             // Save user profile and record import history for each workout
             if (result.user) {
                 saveGarminUser(result.user);
-                // Record each successful import to Supabase
+                // Record each successful import to Firebase
                 for (const workoutResult of (result.results || [])) {
                     if (workoutResult.success) {
                         const workoutData = workoutsToImport.find(w => w.dayIndex === workoutResult.dayIndex) ||
