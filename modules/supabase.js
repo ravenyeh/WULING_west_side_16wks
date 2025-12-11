@@ -22,9 +22,19 @@ async function initSupabase() {
 
     initPromise = (async () => {
         try {
-            const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
-            supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            console.log('Supabase client initialized');
+            // Use specific version for stability
+            const module = await import('https://esm.sh/@supabase/supabase-js@2.47.10');
+            const { createClient } = module;
+
+            supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+                auth: {
+                    persistSession: false,
+                    autoRefreshToken: false,
+                    detectSessionInUrl: false
+                }
+            });
+
+            console.log('Supabase client initialized successfully');
             return supabaseClient;
         } catch (err) {
             console.error('Failed to initialize Supabase:', err);
