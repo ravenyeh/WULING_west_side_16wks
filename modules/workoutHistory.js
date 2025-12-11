@@ -92,7 +92,7 @@ export async function recordWorkoutImport({
         race_date: raceDate ? raceDate.toISOString().split('T')[0] : null
     };
 
-    const result = await writeToFirebase('workout_imports', record);
+    const result = await writeToFirebase('wuling_workout_imports', record);
 
     if (result.success) {
         console.log('Workout import recorded successfully');
@@ -107,7 +107,7 @@ export async function recordWorkoutImport({
  * @returns {Promise<Array>} Import history records
  */
 export async function getImportHistory(email = null) {
-    const result = await readFromFirebase('workout_imports');
+    const result = await readFromFirebase('wuling_workout_imports');
 
     if (!result.success || !result.data) {
         return [];
