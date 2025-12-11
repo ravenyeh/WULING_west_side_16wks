@@ -1,7 +1,7 @@
 // Workout Import History Module
-// Tracks workout imports to Garmin Connect using Supabase
+// Tracks workout imports to Garmin Connect using Firebase
 
-import { getSupabase } from './supabase.js';
+import { writeToFirebase, readFromFirebase } from './firebase.js';
 import { trainingData } from './trainingData.js';
 
 // LocalStorage key for Garmin user profile
@@ -39,7 +39,7 @@ export function clearGarminUser() {
 }
 
 /**
- * Record a workout import to Supabase
+ * Record a workout import to Firebase
  * @param {Object} params - Import parameters
  * @param {number} params.dayIndex - Day index in training plan (0-indexed)
  * @param {string} params.scheduledDate - Scheduled date (YYYY-MM-DD)
@@ -69,39 +69,36 @@ export async function recordWorkoutImport({
         return { success: false, error: 'Invalid day index' };
     }
 
-    try {
-        const supabase = await getSupabase();
-        console.log('Supabase client ready, inserting...');
+    const record = {
+        // User info
+        garmin_display_name: user.displayName,
+        garmin_full_name: user.fullName || null,
+        garmin_email: user.email || null,
 
-        const { data, error } = await supabase
-            .from('workout_import_history')
-            .insert({
-                garmin_display_name: user.displayName,
-                garmin_full_name: user.fullName || null,
-                garmin_email: user.email || null,
-                day_index: dayIndex,
-                week: workout.week,
-                day: workout.day,
-                phase: workout.phase,
-                intensity: workout.intensity,
-                workout_content: workout.content,
-                scheduled_date: scheduledDate || null,
-                user_ftp: userFTP || null,
-                target_time: targetTime || null,
-                race_date: raceDate ? raceDate.toISOString().split('T')[0] : null
-            });
+        // Workout info
+        day_index: dayIndex,
+        week: workout.week,
+        day: workout.day,
+        phase: workout.phase,
+        intensity: workout.intensity,
+        workout_content: workout.content,
 
-        if (error) {
-            console.error('Error recording import:', error);
-            return { success: false, error: error.message };
-        }
+        // Schedule info
+        scheduled_date: scheduledDate || null,
 
-        console.log('Workout import recorded successfully:', data);
-        return { success: true, data };
-    } catch (err) {
-        console.error('Failed to record import:', err);
-        return { success: false, error: err.message };
+        // User settings
+        user_ftp: userFTP || null,
+        target_time: targetTime || null,
+        race_date: raceDate ? raceDate.toISOString().split('T')[0] : null
+    };
+
+    const result = await writeToFirebase('workout_imports', record);
+
+    if (result.success) {
+        console.log('Workout import recorded successfully');
     }
+
+    return result;
 }
 
 /**
@@ -110,29 +107,27 @@ export async function recordWorkoutImport({
  * @returns {Promise<Array>} Import history records
  */
 export async function getImportHistory(email = null) {
-    try {
-        const supabase = await getSupabase();
-        let query = supabase
-            .from('workout_import_history')
-            .select('*')
-            .order('imported_at', { ascending: false });
+    const result = await readFromFirebase('workout_imports');
 
-        if (email) {
-            query = query.eq('garmin_email', email);
-        }
-
-        const { data, error } = await query.limit(100);
-
-        if (error) {
-            console.error('Error fetching import history:', error);
-            return [];
-        }
-
-        return data || [];
-    } catch (err) {
-        console.error('Failed to fetch import history:', err);
+    if (!result.success || !result.data) {
         return [];
     }
+
+    // Convert Firebase object to array
+    const records = Object.entries(result.data).map(([key, value]) => ({
+        id: key,
+        ...value
+    }));
+
+    // Filter by email if provided
+    if (email) {
+        return records.filter(r => r.garmin_email === email);
+    }
+
+    // Sort by timestamp descending
+    return records.sort((a, b) =>
+        new Date(b.timestamp) - new Date(a.timestamp)
+    );
 }
 
 /**
@@ -144,25 +139,8 @@ export async function getImportHistory(email = null) {
 export async function hasWorkoutBeenImported(dayIndex, email) {
     if (!email) return false;
 
-    try {
-        const supabase = await getSupabase();
-        const { data, error } = await supabase
-            .from('workout_import_history')
-            .select('id')
-            .eq('day_index', dayIndex)
-            .eq('garmin_email', email)
-            .limit(1);
-
-        if (error) {
-            console.error('Error checking import status:', error);
-            return false;
-        }
-
-        return data && data.length > 0;
-    } catch (err) {
-        console.error('Failed to check import status:', err);
-        return false;
-    }
+    const history = await getImportHistory(email);
+    return history.some(r => r.day_index === dayIndex);
 }
 
 /**
@@ -175,25 +153,11 @@ export async function getImportStats(email) {
         return { totalImports: 0, uniqueWorkouts: 0 };
     }
 
-    try {
-        const supabase = await getSupabase();
-        const { data, error } = await supabase
-            .from('workout_import_history')
-            .select('day_index')
-            .eq('garmin_email', email);
+    const history = await getImportHistory(email);
+    const uniqueDays = new Set(history.map(r => r.day_index));
 
-        if (error) {
-            console.error('Error fetching stats:', error);
-            return { totalImports: 0, uniqueWorkouts: 0 };
-        }
-
-        const uniqueDays = new Set(data.map(d => d.day_index));
-        return {
-            totalImports: data.length,
-            uniqueWorkouts: uniqueDays.size
-        };
-    } catch (err) {
-        console.error('Failed to fetch stats:', err);
-        return { totalImports: 0, uniqueWorkouts: 0 };
-    }
+    return {
+        totalImports: history.length,
+        uniqueWorkouts: uniqueDays.size
+    };
 }
