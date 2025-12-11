@@ -92,7 +92,7 @@ export async function recordWorkoutImport({
         race_date: raceDate ? raceDate.toISOString().split('T')[0] : null
     };
 
-    const result = await writeToFirebase('workout_imports', record);
+    const result = await writeToFirebase('wuling_workout_imports', record);
 
     if (result.success) {
         console.log('Workout import recorded successfully');
@@ -107,7 +107,7 @@ export async function recordWorkoutImport({
  * @returns {Promise<Array>} Import history records
  */
 export async function getImportHistory(email = null) {
-    const result = await readFromFirebase('workout_imports');
+    const result = await readFromFirebase('wuling_workout_imports');
 
     if (!result.success || !result.data) {
         return [];
@@ -160,4 +160,74 @@ export async function getImportStats(email) {
         totalImports: history.length,
         uniqueWorkouts: uniqueDays.size
     };
+}
+
+// ============================================
+// Daily Stats Functions
+// ============================================
+
+/**
+ * Record daily stats to Firebase
+ * @param {Object} params - Stats parameters
+ * @param {Object} params.user - User info (displayName, email)
+ * @param {string} params.date - Date string (YYYY-MM-DD)
+ * @param {Object} params.stats - Stats data (flexible structure)
+ */
+export async function recordDailyStat({ user, date, stats }) {
+    if (!user || !user.displayName) {
+        console.warn('Cannot record daily stat: no user info');
+        return { success: false, error: 'No user info' };
+    }
+
+    const record = {
+        garmin_display_name: user.displayName,
+        garmin_email: user.email || null,
+        date: date || new Date().toISOString().split('T')[0],
+        ...stats
+    };
+
+    const result = await writeToFirebase('wuling_daily_stats', record);
+
+    if (result.success) {
+        console.log('Daily stat recorded successfully');
+    }
+
+    return result;
+}
+
+/**
+ * Get daily stats from Firebase
+ * @param {string} email - User's email (optional, for filtering)
+ * @param {string} startDate - Start date filter (YYYY-MM-DD)
+ * @param {string} endDate - End date filter (YYYY-MM-DD)
+ * @returns {Promise<Array>} Daily stats records
+ */
+export async function getDailyStats(email = null, startDate = null, endDate = null) {
+    const result = await readFromFirebase('wuling_daily_stats');
+
+    if (!result.success || !result.data) {
+        return [];
+    }
+
+    // Convert Firebase object to array
+    let records = Object.entries(result.data).map(([key, value]) => ({
+        id: key,
+        ...value
+    }));
+
+    // Filter by email if provided
+    if (email) {
+        records = records.filter(r => r.garmin_email === email);
+    }
+
+    // Filter by date range if provided
+    if (startDate) {
+        records = records.filter(r => r.date >= startDate);
+    }
+    if (endDate) {
+        records = records.filter(r => r.date <= endDate);
+    }
+
+    // Sort by date descending
+    return records.sort((a, b) => new Date(b.date) - new Date(a.date));
 }
